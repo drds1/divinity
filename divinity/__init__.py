@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import warnings
 
 def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [0,0]):
     '''
@@ -14,6 +15,9 @@ def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [
     t = np.arange(N)
     X = np.zeros(N)
     for p, sa, ca in zip(periods,sine_amplitudes, cosine_amplitudes):
+        if p == 0:
+            warnings.warn("Zero wavelength entered in 'gen_season' 'period' argument. Ignoring this.")
+            continue
         s = np.sin(2*np.pi/p * t)
         X+= sa * s
         c = np.cos(2 * np.pi / p * t)
