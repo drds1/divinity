@@ -18,17 +18,18 @@ if __name__ == '__main__':
 
 
     #generate periodic noisy signal
-    t = np.arange(100)
+    t = np.arange(200)
     #t = np.linspace(0, 1, 500)
     #x = signal.sawtooth(2 * np.pi * 5 * t)
 
     #generate a sawtooth signal
-    sawtooth = dv.gen_season(N=100,periods=np.arange(5,25,5),
-                  sine_amplitudes= np.random.randn(4),
-                  cosine_amplitudes= np.random.randn(4))
+    sawtooth = dv.gen_season(N=len(t),periods=np.arange(5,20,5),
+                  sine_amplitudes= np.ones(3),#np.random.randn(4),
+                  cosine_amplitudes= np.ones(3))#np.random.randn(4))
     features = sawtooth['features']
     x = sawtooth['target']
-
+    xs = features.sum(axis=1)
     plt.plot(t, x)
+    plt.plot(t,xs)
     plt.show()
 
