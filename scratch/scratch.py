@@ -22,14 +22,13 @@ if __name__ == '__main__':
     #t = np.linspace(0, 1, 500)
     #x = signal.sawtooth(2 * np.pi * 5 * t)
 
-    #generate a sawtooth signal
-    sawtooth = dv.gen_season(N=len(t),periods=np.arange(5,20,5),
-                  sine_amplitudes= np.ones(3),#np.random.randn(4),
-                  cosine_amplitudes= np.ones(3))#np.random.randn(4))
+    #generate a repeating signal
+    # note the repeat length is the lowest common multiple of the
+    # periods
+    sawtooth = dv.gen_season(N=len(t),periods=np.arange(5,25,5),
+                  sine_amplitudes= np.random.randn(4),
+                  cosine_amplitudes= np.random.randn(4))
     features = sawtooth['features']
     x = sawtooth['target']
     xs = features.sum(axis=1)
     plt.plot(t, x)
-    plt.plot(t,xs)
-    plt.show()
-
