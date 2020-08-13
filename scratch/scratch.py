@@ -7,6 +7,7 @@ import sklearn.linear_model
 import statsmodels.tsa.arima_model as arima_model
 from functools import wraps
 import inspect
+import warnings
 
 def initializer(func):
     """
@@ -46,6 +47,7 @@ class divinity:
                  residual_model_fit_kwargs = {'trend':'nc', 'disp':0}):
         self.features = None
         self._Ntot = None
+        self._N = None
         #pass
 
     def _prep_features(self,N):
@@ -87,8 +89,14 @@ class divinity:
         :return:
         '''
         self._live_res_model = self.residual_model(self._y_res, **self.residual_model_kwargs)
-        self._live_res_model_fit = self._live_res_model.fit(self._yres)
-        self._yres_pred_forecast = self._live_res_model_fit.forecast(steps = self.forecast_length)
+        try:
+            self._live_res_model_fit = self._live_res_model.fit()
+            forecast = self._live_res_model_fit.forecast(steps = self.forecast_length)
+            #forecast['forecast'], forecast['stderr'], forecast['conf_int']
+            self._yres_pred_forecast = forecast['forecast']
+        except:
+            warnings.warn("Residual ARIMA model failure... Using only trend and seasonal components.")
+            self._yres_pred_forecast = np.zeros(self.forecast_length)
 
     def fit(self,y):
         '''
@@ -154,13 +162,16 @@ if __name__ == '__main__':
     N = 120
     Ntest = 100
     t = np.arange(N)
-    y_test = 0.1*t + np.sin(2*np.pi/20*t)
-    dfc = divinity(forecast_length=N - Ntest, seasonal_periods=list(np.arange(2,50)))
+    y_test = 0.1*t + np.sin(2*np.pi/20*t) + np.random.randn(N)*0.5
+    dfc = divinity(forecast_length=N - Ntest, seasonal_periods=[20])#list(np.arange(2,50))
     dfc.fit(y_test[:Ntest])
     y_forecast = dfc.predict()
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     ax1.plot(t, y_test,label='true')
     ax1.plot(t[Ntest:],y_forecast,label='forecast')
+    ax1.set_ylabel('ROI timeseries')
+    ax1.set_xlabel('day')
+    plt.legend()
     plt.savefig('test_divinity_forecast.png')
 

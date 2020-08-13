@@ -14,15 +14,18 @@ def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [
     features = {}
     t = np.arange(N)
     X = np.zeros(N)
-    for p, sa, ca in zip(periods,sine_amplitudes, cosine_amplitudes):
+    for idx in range(len(periods)):
+        p = periods[idx]
         if p == 0:
             warnings.warn("Zero wavelength entered in 'gen_season' 'period' argument. Ignoring this.")
             continue
         s = np.sin(2*np.pi/p * t)
         c = np.cos(2 * np.pi / p * t)
         if sine_amplitudes is not None:
+            sa = sine_amplitudes[idx]
             X += sa * s
         if cosine_amplitudes is not None:
+            ca = cosine_amplitudes[idx]
             X += ca * c
         features['sin P=' + str(p)] = s
         features['cos P=' + str(p)] = c
@@ -39,9 +42,11 @@ def gen_trend(N, coef = [0,1,2], amplitudes = [1,0.5,0.2]):
     features = {}
     t = np.arange(N)
     X = np.zeros(N)
-    for order, amp in zip(coef,amplitudes):
+    for idx in range(len(coef)):
+        order = coef[idx]
         f = np.array(t**order,dtype='float')
         if amplitudes is not None:
+            amp = amplitudes[idx]
             X+= amp*f
         features['trend order '+str(order)] = f
     return {'features':pd.DataFrame(features),'target':X}
