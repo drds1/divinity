@@ -19,9 +19,11 @@ def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [
             warnings.warn("Zero wavelength entered in 'gen_season' 'period' argument. Ignoring this.")
             continue
         s = np.sin(2*np.pi/p * t)
-        X+= sa * s
         c = np.cos(2 * np.pi / p * t)
-        X += ca * c
+        if sine_amplitudes is not None:
+            X += sa * s
+        if cosine_amplitudes is not None:
+            X += ca * c
         features['sin P=' + str(p)] = s
         features['cos P=' + str(p)] = c
     return {'features':pd.DataFrame(features),'target':X}
@@ -39,7 +41,8 @@ def gen_trend(N, coef = [0,1,2], amplitudes = [1,0.5,0.2]):
     X = np.zeros(N)
     for order, amp in zip(coef,amplitudes):
         f = np.array(t**order,dtype='float')
-        X+= amp*f
+        if amplitudes is not None:
+            X+= amp*f
         features['trend order '+str(order)] = f
     return {'features':pd.DataFrame(features),'target':X}
 
