@@ -45,13 +45,15 @@ if __name__ == '__main__':
     y_forecast = dfc.predict()
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
-    ax1.plot(t, y_test,label='true',color='k')
-    ax1.plot(t[Ntest:],y_forecast,label='forecast',color='b')
+    ax1.plot(t, y_test,label='True',color='k')
+    ax1.plot(t[Ntest:],y_forecast,label='Forecast',color='b')
     ax1.fill_between(t[Ntest:], y_forecast - dfc.ystd,
                      y_forecast + dfc.ystd,
                      alpha = 0.3, color='b',label = None)
     ax1.set_ylabel('ROI timeseries')
-    ax1.set_xlabel('day')
+    ax1.set_xlabel('Day')
+    plt.grid(b=None, which='major', axis='both')
     plt.legend()
-    plt.savefig('test_divinity_forecast.png')
+    plt.tight_layout()
+    plt.savefig('../Doccumentation/test_divinity_forecast.png')
 
