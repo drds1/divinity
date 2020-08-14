@@ -1,4 +1,4 @@
-# divinity
+# Divinity
 Custom timeseries forecast library. This is currently
  in development and designed to automate and 
  generalise (as much as possible) the process of 
