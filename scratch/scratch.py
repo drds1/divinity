@@ -14,7 +14,7 @@ def get_error(yres, conf_limit = 95):
     N = len(ordered_y_res)
     idx_lo = int((100. - conf_limit) / 2 / 100 * N)
     idx_hi = int(100 - (100. - conf_limit) / 2 / 100 * N)
-    return ordered_y_res[idx_hi] - ordered_y_res[idx_lo]  # *np.std(self._y_res)
+    return ordered_y_res[idx_hi] - ordered_y_res[idx_lo]  # *np.std(self._trend_pred_res)
 
 
 def initializer(func):
@@ -88,10 +88,10 @@ class divinity:
 
         #compute the model residuals to pass on
         # to the residual model
-        self._y_model = self.trend_seasonal_model.predict(self.features)
-        self._y_res = y - self._y_model[:self._N]
-        sig = get_error(self._y_res, conf_limit=self.confidence_interval)
-        self._y_model_err = np.ones(self.forecast_length)*sig#*np.std(self._y_res)
+        self._trend_all = self.trend_seasonal_model.predict(self.features)
+        self._trend_pred_res = y - self._trend_all[:self._N]
+        sig = get_error(self._trend_pred_res, conf_limit=self.confidence_interval)
+        self._trend_forecast_err = np.ones(self.forecast_length)*sig#*np.std(self._trend_pred_res)
 
     def _fit_residual_model(self):
         '''
@@ -100,23 +100,24 @@ class divinity:
         seasonality
         :return:
         '''
-        self._live_res_model = self.residual_model(self._y_res, **self.residual_model_kwargs)
+        self._live_res_model = self.residual_model(self._trend_pred_res, **self.residual_model_kwargs)
         try:
             self._live_res_model_fit = self._live_res_model.fit()
             forecast = self._live_res_model_fit.predict(start=0, end=self._Ntot-1)
-            self._yres_pred_forecast = forecast[self._N:]
-            sig = get_error(forecast[:self._N] - self._y_res, conf_limit=self.confidence_interval)
-            self._yres_pred_err = sig*np.ones(self.forecast_length)
-
+            self._yres_all = forecast
+            self._yres_forecast = forecast[self._N:]
+            sig = get_error(forecast[:self._N] - self._trend_pred_res, conf_limit=self.confidence_interval)
+            self._yres_forecast_err = sig*np.ones(self.forecast_length)
+            #self._trend_forecast_err
 
             #forecast = self._live_res_model_fit.forecast(steps = self.forecast_length)
             #forecast['forecast'], forecast['stderr'], forecast['conf_int']
-            #self._yres_pred_forecast = forecast['forecast']
+            #self._yres_forecast = forecast['forecast']
             #self._yres_pred_std = forecast['stderr']
         except:
             warnings.warn("Residual ARIMA model failure... Using only trend and seasonal components.")
-            self._yres_pred_forecast = np.zeros(self.forecast_length)
-            self._yres_pred_err = np.zeros(self.forecast_length)
+            self._yres_forecast = np.zeros(self.forecast_length)
+            self._yres_forecast_err = np.zeros(self.forecast_length)
 
     def fit(self,y):
         '''
@@ -137,8 +138,8 @@ class divinity:
         forecast_length input argument
         :return:
         '''
-        self.ypred = self._yres_pred_forecast + self._y_model[self._N:]
-        self.ystd = np.sqrt(self._yres_pred_err**2 + self._y_model_err**2)/2
+        self.ypred = self._yres_forecast + self._trend_all[self._N:]
+        self.ystd = np.sqrt(self._yres_forecast_err**2 + self._trend_forecast_err**2)/2
         return self.ypred
 
 
