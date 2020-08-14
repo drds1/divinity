@@ -1,13 +1,21 @@
 import numpy as np
 import pandas as pd
 import divinity as dv
-from scipy import signal
 import matplotlib.pyplot as plt
 import sklearn.linear_model
 import statsmodels.tsa.arima_model as arima_model
 from functools import wraps
 import inspect
 import warnings
+
+
+def get_error(yres, conf_limit = 95):
+    ordered_y_res = np.sort(yres)
+    N = len(ordered_y_res)
+    idx_lo = int((100. - conf_limit) / 2 / 100 * N)
+    idx_hi = int(100 - (100. - conf_limit) / 2 / 100 * N)
+    return ordered_y_res[idx_hi] - ordered_y_res[idx_lo]  # *np.std(self._y_res)
+
 
 def initializer(func):
     """
@@ -33,6 +41,7 @@ class divinity:
     @initializer
     def __init__(self,
                  forecast_length,
+                 confidence_interval = 95.0,
                  seasonal_periods = [7,14.,28.,30.,90.,120.,182.,365.],
                  trend_order = [0,1],
                  trend_seasonal_model = sklearn.linear_model.RidgeCV(alphas=(0.1, 1.0, 10.0),
@@ -76,10 +85,13 @@ class divinity:
         if self.features is None:
             self._prep_features(self._Ntot)
         self.trend_seasonal_model.fit(self.features[:self._N],y)
+
         #compute the model residuals to pass on
         # to the residual model
         self._y_model = self.trend_seasonal_model.predict(self.features)
         self._y_res = y - self._y_model[:self._N]
+        sig = get_error(self._y_res, conf_limit=self.confidence_interval)
+        self._y_model_err = np.ones(self.forecast_length)*sig#*np.std(self._y_res)
 
     def _fit_residual_model(self):
         '''
@@ -91,12 +103,20 @@ class divinity:
         self._live_res_model = self.residual_model(self._y_res, **self.residual_model_kwargs)
         try:
             self._live_res_model_fit = self._live_res_model.fit()
-            forecast = self._live_res_model_fit.forecast(steps = self.forecast_length)
+            forecast = self._live_res_model_fit.predict(start=0, end=self._Ntot-1)
+            self._yres_pred_forecast = forecast[self._N:]
+            sig = get_error(forecast[:self._N] - self._y_res, conf_limit=self.confidence_interval)
+            self._yres_pred_err = sig*np.ones(self.forecast_length)
+
+
+            #forecast = self._live_res_model_fit.forecast(steps = self.forecast_length)
             #forecast['forecast'], forecast['stderr'], forecast['conf_int']
-            self._yres_pred_forecast = forecast['forecast']
+            #self._yres_pred_forecast = forecast['forecast']
+            #self._yres_pred_std = forecast['stderr']
         except:
             warnings.warn("Residual ARIMA model failure... Using only trend and seasonal components.")
             self._yres_pred_forecast = np.zeros(self.forecast_length)
+            self._yres_pred_err = np.zeros(self.forecast_length)
 
     def fit(self,y):
         '''
@@ -117,7 +137,9 @@ class divinity:
         forecast_length input argument
         :return:
         '''
-        return(self._yres_pred_forecast + self._y_model[self._N:] )
+        self.ypred = self._yres_pred_forecast + self._y_model[self._N:]
+        self.ystd = np.sqrt(self._yres_pred_err**2 + self._y_model_err**2)/2
+        return self.ypred
 
 
 
@@ -163,13 +185,18 @@ if __name__ == '__main__':
     Ntest = 100
     t = np.arange(N)
     y_test = 0.1*t + np.sin(2*np.pi/20*t) + np.random.randn(N)*0.5
-    dfc = divinity(forecast_length=N - Ntest, seasonal_periods=[20])#list(np.arange(2,50))
+    dfc = dv.divinity(forecast_length=N - Ntest,
+                      seasonal_periods=[20],
+                      confidence_interval=70.)
     dfc.fit(y_test[:Ntest])
     y_forecast = dfc.predict()
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
-    ax1.plot(t, y_test,label='true')
-    ax1.plot(t[Ntest:],y_forecast,label='forecast')
+    ax1.plot(t, y_test,label='true',color='k')
+    ax1.plot(t[Ntest:],y_forecast,label='forecast',color='b')
+    ax1.fill_between(t[Ntest:], y_forecast - dfc.ystd,
+                     y_forecast + dfc.ystd,
+                     alpha = 0.3, color='b',label = None)
     ax1.set_ylabel('ROI timeseries')
     ax1.set_xlabel('day')
     plt.legend()
