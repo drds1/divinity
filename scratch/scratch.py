@@ -41,6 +41,9 @@ if __name__ == '__main__':
     import sklearn.linear_model
     model = sklearn.linear_model.LinearRegression(fit_intercept=False)
 
+
+
+
     trend_groups = [[f] for f in features.columns if 'trend order' in f]
     greedy_select_trend = dv.greedy_select(features.iloc[:Ntest,:],
                    y_test[:Ntest],
@@ -51,13 +54,14 @@ if __name__ == '__main__':
 
     #select the best features to include in the model following trend feature selection
     seasonal_features = [f for f in features.columns if 'P=' in f]
-    trend_seasonality_groups = greedy_results_trend['chosen_features'] + dv.group_seasonal_features(seasonal_features)
+    trend_seasonality_groups =  dv.group_seasonal_features(seasonal_features)
     greedy_select_trend_seasonal = dv.greedy_select(features.iloc[:Ntest,:],
                    y_test[:Ntest],
                    features.iloc[Ntest:,:],
                    y_test[Ntest:],
-                   model, feature_groups = trend_seasonality_groups)
+                   model, feature_groups = trend_seasonality_groups,
+                                                    features_compulsory=greedy_results_trend['chosen_features'])
     greedy_results_trend_seasonal = greedy_select_trend_seasonal.fit()
-
+    all_chosen_features = greedy_results_trend_seasonal['chosen_features']
 
 

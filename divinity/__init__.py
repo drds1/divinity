@@ -5,6 +5,11 @@ import statsmodels.tsa.arima_model as arima_model
 from functools import wraps
 import inspect
 import warnings
+import matplotlib.pylab as plt
+
+def cost_bic(ypred,ytrue,Ntrain, Nparms):
+    return np.sum((ypred - ytrue)**2) + Ntrain*np.log(Nparms)
+
 
 def group_seasonal_features(feature_columns):
     '''
@@ -23,40 +28,48 @@ class greedy_select:
 
     def __init__(self, X_train, y_train, X_test, y_test,
                  model = sklearn.linear_model.LinearRegression(fit_intercept=False),
-                 feature_groups = None):
+                 feature_groups = None, features_compulsory= [],verbose = False):
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
         self.model = model
+        self.features_compulsory = features_compulsory
         if feature_groups is None:
             self.unused_feature_groups = [[g] for g in X_train.columns]
         else:
             self.unused_feature_groups = feature_groups
-        self.f_save = {'feature': [], 'test_cost': [], 'train_cost': []}
+        self.f_save = {'cumulative_features':[],'feature': [],
+                       'test_cost': [], 'train_cost': []}
         self.used_features = []
+        self.verbose = verbose
 
 
     def get_1iteration(self,used_features, unused_feature_groups):
         '''
-
         :return:
         '''
         train_cost_temp = []
         test_cost_temp = []
+        temp_features_save = []
+        Ntrain = len(self.y_train)
         for i in range(len(unused_feature_groups)):
             feature_test = unused_feature_groups[i]
-            temp_features = used_features + feature_test
+            temp_features = list(set(self.features_compulsory + used_features + feature_test))
+            Nparms = len(temp_features)
+            temp_features_save.append(temp_features)
             self.model.fit(self.X_train[temp_features].values, self.y_train)
             y_test_pred = self.model.predict(self.X_test[temp_features].values)
             y_train_pred = self.model.predict(self.X_train[temp_features].values)
-            train_cost_temp.append(np.std(y_train_pred - self.y_train))
-            test_cost_temp.append(np.std(y_test_pred - self.y_test))
+            cost_bic(y_test_pred, self.y_test, Ntrain, Nparms)
+            train_cost_temp.append(cost_bic(y_train_pred, self.y_train, Ntrain, Nparms))
+            test_cost_temp.append(cost_bic(y_test_pred, self.y_test, Ntrain, Nparms))
         idx_best = np.argmin(test_cost_temp)
         return {'best_feature_group':unused_feature_groups[idx_best],
                 'best_train_cost':train_cost_temp[idx_best],
                 'best_test_cost':test_cost_temp[idx_best],
-                'best_idx':idx_best}
+                'best_idx':idx_best,
+                'best_features_actual':temp_features_save[idx_best]}
 
 
     def fit(self):
@@ -64,63 +77,36 @@ class greedy_select:
         Iterate over all possible feature groups in the greedy algorithm
         :return:
         '''
+        idx = 0
         while len(self.unused_feature_groups) > 0:
             results_1it = self.get_1iteration(self.used_features, self.unused_feature_groups)
             new_features = self.unused_feature_groups.pop(results_1it['best_idx'])
             self.used_features = self.used_features + new_features
+            self.f_save['cumulative_features'].append(results_1it['best_features_actual'])
             self.f_save['feature'].append(new_features)
             self.f_save['test_cost'].append(results_1it['best_test_cost'])
             self.f_save['train_cost'].append(results_1it['best_train_cost'])
+            idx += 1
+            if self.verbose is True:
+                plt.close()
+                fig = plt.figure()
+                ax1 = fig.add_subplot(111)
+                t_all = np.arange(len(self.X_train) + len(self.X_test))
+                ax1.plot(t_all,np.append(self.y_train,self.y_test))
+                Ntrain = len(self.X_train)
+                self.model.fit(self.X_train[results_1it['best_features_actual']].values,self.y_train)
+                ax1.plot(t_all[:Ntrain],self.model.predict(self.X_train[results_1it['best_features_actual']]),label=','.join(results_1it['best_features_actual']))
+                ax1.plot(t_all[Ntrain:], self.model.predict(self.X_test[results_1it['best_features_actual']]),
+                         label='test')
+                ax1.set_title('iteration '+str(idx))
+                plt.legend()
+                print(pd.DataFrame(self.f_save))
+                plt.show()
+
         f_save = pd.DataFrame(self.f_save)
-        chosen_features = list(f_save['feature'].values[:np.argmin(f_save['test_cost'].values) + 1])
+        chosen_features = list(f_save['cumulative_features'].values[:np.argmin(f_save['test_cost'].values) + 1])
+        chosen_features = list(set([item for sublist in chosen_features for item in sublist]))
         return {'summary': f_save, 'chosen_features': chosen_features}
-
-
-def greedy_fit_func(X_train, y_train, X_test, y_test, model,
-               feature_groups = None):
-    '''
-    perform a greedy fitting approach to select optimum feature set
-    to include in a model
-    :param X_train:
-    :param y_train:
-    :param X_test:
-    :param y_test:
-    :param model: sklearn-esk .fit .predict syntax
-    :param features:
-    :return:
-    '''
-    if feature_groups is None:
-        unused_feature_groups = [[g] for g in X_train.columns]
-    else:
-        unused_feature_groups = feature_groups
-
-    f_save = {'feature':[],'test_cost':[],'train_cost':[]}
-    used_features = []
-    while len(unused_feature_groups) is not 0:
-        train_cost_temp = []
-        test_cost_temp = []
-        #iterate through all unselected features to find the
-        # next best addition to the final feature set
-        for i in range(len(unused_feature_groups)):
-            feature_test = unused_feature_groups[i]
-            temp_features = used_features + feature_test
-            model.fit(X_train[temp_features].values, y_train)
-            y_test_pred = model.predict(X_test[temp_features].values)
-            y_train_pred = model.predict(X_train[temp_features].values)
-            train_cost_temp.append(np.std(y_train_pred - y_train))
-            test_cost_temp.append(np.std(y_test_pred - y_test))
-        idx_best = np.argmin(test_cost_temp)
-        used_features = used_features + unused_feature_groups[idx_best]
-        #update the greedy feature set with the best performing feature
-        f_save['train_cost'].append(train_cost_temp[idx_best])
-        f_save['test_cost'].append(test_cost_temp[idx_best])
-        f_save['feature'].append(unused_feature_groups.pop(idx_best))
-    #prepare results summary and output chosen features
-    f_save = pd.DataFrame(f_save)
-    chosen_features = list(f_save['feature'].values[:np.argmin(f_save['test_cost'].values)+1])
-    return {'summary':pd.DataFrame(f_save),'chosen_features':chosen_features}
-
-
 
 
 def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [0,0]):
@@ -270,6 +256,8 @@ class divinity:
         self.features = None
         self._Ntot = None
         self._N = None
+        self._chosen_features = None
+        self._greedy_results_trend_seasonal = None
         #pass
 
     def _prep_features(self,N):
@@ -283,6 +271,40 @@ class divinity:
         seasonality = gen_season(N, periods=self.seasonal_periods, sine_amplitudes=None, cosine_amplitudes=None)
         trend = gen_trend(N, coef=self.trend_order, amplitudes=None)
         self.features = pd.concat([trend['features'], seasonality['features']], axis=1)
+
+    def _auto_feature_select(self,X, y, training_fraction = 0.8, model = sklearn.linear_model.LinearRegression(fit_intercept=False)):
+        '''
+        use the above class to automate feature selection for trend and seasonal components
+        :return:
+        '''
+        N = len(y)
+        Ntest = int(training_fraction*N)
+        X_train = X[:Ntest,:]
+        y_train = y[:Ntest]
+        X_test = X[Ntest:,:]
+        y_test = y[Ntest:]
+        features = self.features
+        trend_groups = [[f] for f in features.columns if 'trend order' in f]
+        greedy_select_trend = greedy_select(features.iloc[:Ntest, :],
+                                               y_test[:Ntest],
+                                               features.iloc[Ntest:, :],
+                                               y_test[Ntest:],
+                                               model, feature_groups=trend_groups)
+        greedy_results_trend = greedy_select_trend.fit()
+
+        # select the best features to include in the model following trend feature selection
+        seasonal_features = [f for f in features.columns if 'P=' in f]
+        trend_seasonality_groups = group_seasonal_features(seasonal_features)
+        greedy_select_trend_seasonal = greedy_select(features.iloc[:Ntest, :],
+                                                        y_test[:Ntest],
+                                                        features.iloc[Ntest:, :],
+                                                        y_test[Ntest:],
+                                                        model, feature_groups=trend_seasonality_groups,
+                                                        features_compulsory=greedy_results_trend['chosen_features'])
+        greedy_results_trend_seasonal = greedy_select_trend_seasonal.fit()
+        all_chosen_features = greedy_results_trend_seasonal['chosen_features']
+        self._chosen_features = all_chosen_features
+        self._greedy_results_trend_seasonal = greedy_results_trend_seasonal
 
     def _fit_trend_season(self, y):
         '''
@@ -331,6 +353,7 @@ class divinity:
             warnings.warn("Residual ARIMA model failure... Using only trend and seasonal components.")
             self._yres_forecast = np.zeros(self.forecast_length)
             self._yres_forecast_err = np.zeros(self.forecast_length)
+
 
     def fit(self,y):
         '''
