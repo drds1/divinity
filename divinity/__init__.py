@@ -6,6 +6,45 @@ from functools import wraps
 import inspect
 import warnings
 
+def greedy_fit(X_train, y_train, X_test, y_test, model):
+    '''
+    perform a greedy fitting approach to select optimum feature set
+    to include in a model
+    :param X_train:
+    :param y_train:
+    :param X_test:
+    :param y_test:
+    :param model: sklearn-esk .fit .predict syntax
+    :param features:
+    :return:
+    '''
+    f_save = {'feature':[],'test_cost':[],'train_cost':[]}
+    saved_features = f_save['feature']
+    unused_features = list(X_train.columns)
+    used_features = []
+    while len(unused_features) is not 0:
+        train_cost_temp = []
+        test_cost_temp = []
+        #iterate through all unselected features to find the
+        # next best addition to the final feature set
+        for i in range(len(unused_features)):
+            feature_test = unused_features[i]
+            temp_features = used_features.append(feature_test)
+            model.fit(X_train[temp_features].values, y_train)
+            y_test_pred = model.predict(X_test[temp_features].values)
+            y_train_pred = model.predict(X_train[temp_features].values)
+            train_cost_temp.append(np.std(y_train_pred - y_train))
+            test_cost_temp.append(np.std(y_test_pred - y_test))
+        idx_best = np.argmin(test_cost_temp)
+        #update the greedy feature set with the best performing feature
+        f_save['train_cost'].append(train_cost_temp[idx_best])
+        f_save['test_cost'].append(test_cost_temp[idx_best])
+        f_save['feature'].append(unused_features.pop(idx_best))
+    return pd.DataFrame(f_save)
+
+
+
+
 def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [0,0]):
     '''
     generate sinusoidal features

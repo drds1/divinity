@@ -57,3 +57,17 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.savefig('../Doccumentation/test_divinity_forecast.png')
 
+    import sklearn.linear_model
+    model = sklearn.linear_model.RidgeCV(alphas=(0.1, 1.0, 10.0),
+                                         fit_intercept=False,
+                                         normalize=False,
+                                         scoring=None,
+                                         cv=None,
+                                         gcv_mode=None,
+                                         store_cv_values=False)
+    greedy_results = dv.greedy_fit(dfc.features.iloc[:Ntest,:],
+                   y_test[:Ntest],
+                   dfc.features.iloc[Ntest:,:],
+                   y_test[Ntest:],
+                   model)
+
