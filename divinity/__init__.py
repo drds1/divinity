@@ -251,9 +251,11 @@ class divinity:
                                                                      gcv_mode=None,
                                                                      store_cv_values=False),
                  residual_model = arima_model.ARIMA,
+                 optimise_trend_season_features = True,
                  residual_model_kwargs = {'order':(2,0,2),'exog':None},
                  residual_model_fit_kwargs = {'trend':'nc', 'disp':0}):
         self.features = None
+        self.input_features = None
         self._Ntot = None
         self._N = None
         self._chosen_features = None
@@ -268,27 +270,30 @@ class divinity:
         required forecast
         :return:
         '''
-        seasonality = gen_season(N, periods=self.seasonal_periods, sine_amplitudes=None, cosine_amplitudes=None)
-        trend = gen_trend(N, coef=self.trend_order, amplitudes=None)
-        self.features = pd.concat([trend['features'], seasonality['features']], axis=1)
+        #seasonality = gen_season(N, periods=self.seasonal_periods, sine_amplitudes=None, cosine_amplitudes=None)
+        #trend = gen_trend(N, coef=self.trend_order, amplitudes=None)
+        #self.features = pd.concat([trend['features'], seasonality['features']], axis=1)
+        trend_seasonality = gen_fake(N, max(self.trend_order),
+                 trend_amplitudes=None,
+                 seasonal_periods = self.seasonal_periods,
+                 seasonal_amplitudes_sine = None,
+                 seasonal_amplitudes_cosine = None,
+                 normalize='0to1')
+        self.features = trend_seasonality['features']
+        self.input_features = self.features.copy()
 
-    def _auto_feature_select(self,X, y, training_fraction = 0.8, model = sklearn.linear_model.LinearRegression(fit_intercept=False)):
+    def _auto_feature_select(self, features, y, training_fraction = 0.8, model = sklearn.linear_model.LinearRegression(fit_intercept=False)):
         '''
         use the above class to automate feature selection for trend and seasonal components
         :return:
         '''
         N = len(y)
         Ntest = int(training_fraction*N)
-        X_train = X[:Ntest,:]
-        y_train = y[:Ntest]
-        X_test = X[Ntest:,:]
-        y_test = y[Ntest:]
-        features = self.features
         trend_groups = [[f] for f in features.columns if 'trend order' in f]
         greedy_select_trend = greedy_select(features.iloc[:Ntest, :],
-                                               y_test[:Ntest],
+                                               y[:Ntest],
                                                features.iloc[Ntest:, :],
-                                               y_test[Ntest:],
+                                               y[Ntest:],
                                                model, feature_groups=trend_groups)
         greedy_results_trend = greedy_select_trend.fit()
 
@@ -296,9 +301,9 @@ class divinity:
         seasonal_features = [f for f in features.columns if 'P=' in f]
         trend_seasonality_groups = group_seasonal_features(seasonal_features)
         greedy_select_trend_seasonal = greedy_select(features.iloc[:Ntest, :],
-                                                        y_test[:Ntest],
+                                                        y[:Ntest],
                                                         features.iloc[Ntest:, :],
-                                                        y_test[Ntest:],
+                                                        y[Ntest:],
                                                         model, feature_groups=trend_seasonality_groups,
                                                         features_compulsory=greedy_results_trend['chosen_features'])
         greedy_results_trend_seasonal = greedy_select_trend_seasonal.fit()
@@ -319,6 +324,9 @@ class divinity:
             self._Ntot = self._N + self.forecast_length
         if self.features is None:
             self._prep_features(self._Ntot)
+        if self.optimise_trend_season_features is True:
+            self._auto_feature_select(self.features[:self._N],y)
+            self.features = self.features[self._chosen_features]
         self.trend_seasonal_model.fit(self.features[:self._N],y)
 
         #compute the model residuals to pass on
