@@ -6,7 +6,78 @@ from functools import wraps
 import inspect
 import warnings
 
-def greedy_fit(X_train, y_train, X_test, y_test, model):
+def group_seasonal_features(feature_columns):
+    '''
+    following the naming convention of seasonal features
+    sin P=20, cos P=20....etc, group sin and cosine features together
+    so these can be checked simultaneously by greedy fitting algorithms
+    :param periods: list of input periods to group
+    :return:
+    '''
+    #identify unique columns
+    col1 = [f.replace('cos ','').replace('sin ','') for f in feature_columns]
+    ucol1 = list(set(col1))
+    return [['sin '+uc,'cos '+uc] for uc in ucol1]
+
+class greedy_select:
+
+    def __init__(self, X_train, y_train, X_test, y_test,
+                 model = sklearn.linear_model.LinearRegression(fit_intercept=False),
+                 feature_groups = None):
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = y_train
+        self.y_test = y_test
+        self.model = model
+        if feature_groups is None:
+            self.unused_feature_groups = [[g] for g in X_train.columns]
+        else:
+            self.unused_feature_groups = feature_groups
+        self.f_save = {'feature': [], 'test_cost': [], 'train_cost': []}
+        self.used_features = []
+
+
+    def get_1iteration(self,used_features, unused_feature_groups):
+        '''
+
+        :return:
+        '''
+        train_cost_temp = []
+        test_cost_temp = []
+        for i in range(len(unused_feature_groups)):
+            feature_test = unused_feature_groups[i]
+            temp_features = used_features + feature_test
+            self.model.fit(self.X_train[temp_features].values, self.y_train)
+            y_test_pred = self.model.predict(self.X_test[temp_features].values)
+            y_train_pred = self.model.predict(self.X_train[temp_features].values)
+            train_cost_temp.append(np.std(y_train_pred - self.y_train))
+            test_cost_temp.append(np.std(y_test_pred - self.y_test))
+        idx_best = np.argmin(test_cost_temp)
+        return {'best_feature_group':unused_feature_groups[idx_best],
+                'best_train_cost':train_cost_temp[idx_best],
+                'best_test_cost':test_cost_temp[idx_best],
+                'best_idx':idx_best}
+
+
+    def fit(self):
+        '''
+        Iterate over all possible feature groups in the greedy algorithm
+        :return:
+        '''
+        while len(self.unused_feature_groups) > 0:
+            results_1it = self.get_1iteration(self.used_features, self.unused_feature_groups)
+            new_features = self.unused_feature_groups.pop(results_1it['best_idx'])
+            self.used_features = self.used_features + new_features
+            self.f_save['feature'].append(new_features)
+            self.f_save['test_cost'].append(results_1it['best_test_cost'])
+            self.f_save['train_cost'].append(results_1it['best_train_cost'])
+        f_save = pd.DataFrame(self.f_save)
+        chosen_features = list(f_save['feature'].values[:np.argmin(f_save['test_cost'].values) + 1])
+        return {'summary': f_save, 'chosen_features': chosen_features}
+
+
+def greedy_fit_func(X_train, y_train, X_test, y_test, model,
+               feature_groups = None):
     '''
     perform a greedy fitting approach to select optimum feature set
     to include in a model
@@ -18,29 +89,36 @@ def greedy_fit(X_train, y_train, X_test, y_test, model):
     :param features:
     :return:
     '''
+    if feature_groups is None:
+        unused_feature_groups = [[g] for g in X_train.columns]
+    else:
+        unused_feature_groups = feature_groups
+
     f_save = {'feature':[],'test_cost':[],'train_cost':[]}
-    saved_features = f_save['feature']
-    unused_features = list(X_train.columns)
     used_features = []
-    while len(unused_features) is not 0:
+    while len(unused_feature_groups) is not 0:
         train_cost_temp = []
         test_cost_temp = []
         #iterate through all unselected features to find the
         # next best addition to the final feature set
-        for i in range(len(unused_features)):
-            feature_test = unused_features[i]
-            temp_features = used_features.append(feature_test)
+        for i in range(len(unused_feature_groups)):
+            feature_test = unused_feature_groups[i]
+            temp_features = used_features + feature_test
             model.fit(X_train[temp_features].values, y_train)
             y_test_pred = model.predict(X_test[temp_features].values)
             y_train_pred = model.predict(X_train[temp_features].values)
             train_cost_temp.append(np.std(y_train_pred - y_train))
             test_cost_temp.append(np.std(y_test_pred - y_test))
         idx_best = np.argmin(test_cost_temp)
+        used_features = used_features + unused_feature_groups[idx_best]
         #update the greedy feature set with the best performing feature
         f_save['train_cost'].append(train_cost_temp[idx_best])
         f_save['test_cost'].append(test_cost_temp[idx_best])
-        f_save['feature'].append(unused_features.pop(idx_best))
-    return pd.DataFrame(f_save)
+        f_save['feature'].append(unused_feature_groups.pop(idx_best))
+    #prepare results summary and output chosen features
+    f_save = pd.DataFrame(f_save)
+    chosen_features = list(f_save['feature'].values[:np.argmin(f_save['test_cost'].values)+1])
+    return {'summary':pd.DataFrame(f_save),'chosen_features':chosen_features}
 
 
 
@@ -100,7 +178,21 @@ def gen_fake(N, trend_order,
              trend_amplitudes,
              seasonal_periods,
              seasonal_amplitudes_sine,
-             seasonal_amplitudes_cosine):
+             seasonal_amplitudes_cosine,
+             normalize = '0to1'):
+    '''
+    generate synthetic timeseries and return input feature matrix
+    If amplitude arguments supplied None, just calculate feature matrix
+    and dont bother with the target
+    :param N:
+    :param trend_order:
+    :param trend_amplitudes:
+    :param seasonal_periods:
+    :param seasonal_amplitudes_sine:
+    :param seasonal_amplitudes_cosine:
+    :param normalize:
+    :return:
+    '''
     t = np.arange(N)
     features = {}
 
@@ -118,6 +210,13 @@ def gen_fake(N, trend_order,
     #combine and output features and target
     features_tot = pd.concat([features_trend, features_season], axis=1)
     y_tot = y_trend + y_season
+
+    #normalise features
+    if normalize is not None:
+        featuresstd = features_tot.std()
+        colnorm = featuresstd[featuresstd > 0].index.tolist()
+        if normalize == '0to1':
+            features_tot[colnorm] = (features_tot[colnorm] - features_tot[colnorm].min())/features_tot[colnorm].max()
     return{'features':features_tot,'target':y_tot}
 
 

@@ -5,32 +5,13 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
-    #test the synthetic data generation
-
-    synthetic = dv.gen_fake(N=100, trend_order = 2,
-             trend_amplitudes = [0.1,0.1,0.1],
-             seasonal_periods = [10.,33.],
-             seasonal_amplitudes_sine = [0.1,0.05],
-             seasonal_amplitudes_cosine = [0.1, 0.2])
-
-    features, y = synthetic['features'], synthetic['target']
-
-
-    #generate periodic noisy signal
-    t = np.arange(200)
-    #t = np.linspace(0, 1, 500)
-    #x = signal.sawtooth(2 * np.pi * 5 * t)
-
-    #generate a repeating signal
-    # note the repeat length is the lowest common multiple of the
-    # periods
-    sawtooth = dv.gen_season(N=len(t),periods=np.arange(5,25,5),
-                  sine_amplitudes= np.random.randn(4),
-                  cosine_amplitudes= np.random.randn(4))
-    features = sawtooth['features']
-    x = sawtooth['target']
-    xs = features.sum(axis=1)
-    plt.plot(t, x)
+    #generate synthetic features
+    synthetic = dv.gen_fake(N=120, trend_order = 4,
+             trend_amplitudes = None,
+             seasonal_periods = list(np.arange(2,50)),
+             seasonal_amplitudes_sine = None,
+             seasonal_amplitudes_cosine = None)
+    features = synthetic['features']
 
 
     #now test the class and the new auto assigner
@@ -58,16 +39,25 @@ if __name__ == '__main__':
     plt.savefig('../Doccumentation/test_divinity_forecast.png')
 
     import sklearn.linear_model
-    model = sklearn.linear_model.RidgeCV(alphas=(0.1, 1.0, 10.0),
-                                         fit_intercept=False,
-                                         normalize=False,
-                                         scoring=None,
-                                         cv=None,
-                                         gcv_mode=None,
-                                         store_cv_values=False)
-    greedy_results = dv.greedy_fit(dfc.features.iloc[:Ntest,:],
+    model = sklearn.linear_model.LinearRegression(fit_intercept=False)
+
+    trend_groups = [[f] for f in features.columns if 'trend order' in f]
+    greedy_select_trend = dv.greedy_select(features.iloc[:Ntest,:],
                    y_test[:Ntest],
-                   dfc.features.iloc[Ntest:,:],
+                   features.iloc[Ntest:,:],
                    y_test[Ntest:],
-                   model)
+                   model, feature_groups=trend_groups)
+    greedy_results_trend = greedy_select_trend.fit()
+
+    #select the best features to include in the model following trend feature selection
+    seasonal_features = [f for f in features.columns if 'P=' in f]
+    trend_seasonality_groups = greedy_results_trend['chosen_features'] + dv.group_seasonal_features(seasonal_features)
+    greedy_select_trend_seasonal = dv.greedy_select(features.iloc[:Ntest,:],
+                   y_test[:Ntest],
+                   features.iloc[Ntest:,:],
+                   y_test[Ntest:],
+                   model, feature_groups = trend_seasonality_groups)
+    greedy_results_trend_seasonal = greedy_select_trend_seasonal.fit()
+
+
 
