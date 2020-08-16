@@ -29,3 +29,5 @@ if __name__ == '__main__':
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+    y_forecast_2 = dfc.forecast(steps= N - Ntest)
