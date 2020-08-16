@@ -1,8 +1,10 @@
 # Divinity
-Custom timeseries forecast library. This is currently
+Divinity is a custom timeseries forecast library. This is currently
  in development and designed to automate and 
  generalise (as much as possible) the process of 
- generating any timeseries forecast.
+ generating any timeseries forecast. 
+ 
+ Please see the [demo Jupyter Notebook](https://github.com/dstarkey23/divinity/blob/master/Doccumentation/demo.ipynb) for example useage.
  
  ![Test Image 1](https://github.com/dstarkey23/divinity/blob/master/Doccumentation/test_divinity_forecast.png)
  
