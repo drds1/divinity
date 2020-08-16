@@ -53,6 +53,7 @@ class greedy_select:
         test_cost_temp = []
         temp_features_save = []
         Ntrain = len(self.y_train)
+        Ntest = len(self.y_test)
         for i in range(len(unused_feature_groups)):
             feature_test = unused_feature_groups[i]
             temp_features = list(set(self.features_compulsory + used_features + feature_test))
@@ -61,9 +62,8 @@ class greedy_select:
             self.model.fit(self.X_train[temp_features].values, self.y_train)
             y_test_pred = self.model.predict(self.X_test[temp_features].values)
             y_train_pred = self.model.predict(self.X_train[temp_features].values)
-            cost_bic(y_test_pred, self.y_test, Ntrain, Nparms)
             train_cost_temp.append(cost_bic(y_train_pred, self.y_train, Ntrain, Nparms))
-            test_cost_temp.append(cost_bic(y_test_pred, self.y_test, Ntrain, Nparms))
+            test_cost_temp.append(cost_bic(y_test_pred, self.y_test, Ntest, Nparms))
         idx_best = np.argmin(test_cost_temp)
         return {'best_feature_group':unused_feature_groups[idx_best],
                 'best_train_cost':train_cost_temp[idx_best],
@@ -109,13 +109,19 @@ class greedy_select:
         return {'summary': f_save, 'chosen_features': chosen_features}
 
 
-def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [0,0]):
+def gen_season(N,
+               periods = [10,20],
+               sine_amplitudes = [1,1],
+               cosine_amplitudes = [0,0],
+               remove_invalid_features = True):
     '''
     generate sinusoidal features
     :param N:
     :param periods:
     :param sine_amplitudes:
     :param cosine_amplitudes:
+    :param remove_invalid_features: If the period is more than half the
+    timeseries length, do not include the feature
     :return:
     '''
     features = {}
@@ -123,6 +129,10 @@ def gen_season(N,periods = [10,20],sine_amplitudes = [1,1],cosine_amplitudes = [
     X = np.zeros(N)
     for idx in range(len(periods)):
         p = periods[idx]
+        if remove_invalid_features is True:
+            if p > N/2:
+                warnings.warn("period "+str(p)+" too long to include for timeseries length. Ignoring this.")
+                continue
         if p == 0:
             warnings.warn("Zero wavelength entered in 'gen_season' 'period' argument. Ignoring this.")
             continue
@@ -258,6 +268,7 @@ class divinity:
         self.input_features = None
         self._Ntot = None
         self._N = None
+        self._y = None
         self._chosen_features = None
         self._greedy_results_trend_seasonal = None
         #pass
@@ -370,6 +381,7 @@ class divinity:
         :param y:
         :return:
         '''
+        self._y = y
         #fit the trend and seasonal components
         self._fit_trend_season(y)
 
@@ -385,5 +397,20 @@ class divinity:
         self.ypred = self._yres_forecast + self._trend_all[self._N:]
         self.ystd = np.sqrt(self._yres_forecast_err**2 + self._trend_forecast_err**2)/2
         return self.ypred
+
+    def forecast(self, steps):
+        '''
+        extend the forecast (must already have used .fit)
+        :return:
+        '''
+        self._Ntot = self._N + steps
+        self.forecast_length = steps
+        self.optimise_trend_season_features = False
+        self._prep_features(self._N+steps)
+        self.features = self.features[self._chosen_features]
+        self.fit(self._y)
+        return self.predict()
+
+
 
 

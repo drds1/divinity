@@ -12,7 +12,6 @@ if __name__ == '__main__':
     t = np.arange(N)
     y_test = 0.1*t + np.sin(2*np.pi/20*t) + np.random.randn(N)*0.5
     dfc = dv.divinity(forecast_length=N - Ntest,
-                      seasonal_periods=[20],
                       confidence_interval=70.)
     dfc.fit(y_test[:Ntest])
     y_forecast = dfc.predict()
@@ -30,4 +29,4 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    y_forecast_2 = dfc.forecast(steps= N - Ntest)
+    #y_forecast_2 = dfc.forecast(steps= 50)
