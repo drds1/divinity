@@ -4,9 +4,9 @@ Divinity is a custom timeseries forecast library. This is currently
  generalise (as much as possible) the process of 
  generating any timeseries forecast. 
  
- Please see the [demo Jupyter Notebook](https://github.com/dstarkey23/divinity/blob/master/Doccumentation/demo.ipynb) for example useage.
+ Please see the [demo Jupyter Notebook](https://github.com/dstarkey23/divinity/blob/master/Documentation/demo.ipynb) for example useage.
  
- ![Test Image 1](https://github.com/dstarkey23/divinity/blob/master/Doccumentation/test_divinity_forecast.png)
+ ![Test Image 1](https://github.com/dstarkey23/divinity/blob/master/Documentation/test_divinity_forecast.png)
  
  This is an RnD project aiming to start simply and 
  build additional functionality as needed. Please see
