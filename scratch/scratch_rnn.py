@@ -51,15 +51,18 @@ if __name__ == '__main__':
 
     #design rnn using keras
     model = keras.sequential()
-    model.add(keras.layers.LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
-    model.add(keras.layers.Dense(1))
+    #model.add(keras.layers.LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+    #model.add(keras.layers.Dense(1))
+    #model.compile(loss='mean_squared_error', optimizer='adam')
+
+    model.add(keras.layers.Dense(nlags))
+    model.add(keras.layers.RNN(return_sequences = True))
+    model.add(keras.layers.RNN(return_sequences=True))
+    model.add(keras.layers.RNN(return_sequences=True))
+    model.add(keras.layers.RNN(return_sequences=False))
+    model.add(keras.layers.Dense(1,activation='relu'))
     model.compile(loss='mean_squared_error', optimizer='adam')
 
-    #model.add(keras.layers.Dense(nlags))
-    #model.add(keras.layers.RNN(return_sequences = True))
-    #model.add(keras.layers.RNN(return_sequences=True))
-    #model.add(keras.layers.RNN(return_sequences=True))
-    #model.add(keras.layers.RNN(return_sequences=False))
 
 
 
