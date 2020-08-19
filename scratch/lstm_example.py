@@ -105,6 +105,25 @@ train, test = supervised_values[0:-12], supervised_values[-12:]
 # transform the scale of the data
 scaler, train_scaled, test_scaled = scale(train, test)
 
+neurons = 4
+nb_epoch = 3000
+batch_size = 1
+X, y = train[:, 0:-1], train[:, -1]
+X = X.reshape(X.shape[0], 1, X.shape[1])
+model = Sequential()
+model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+model.add(Dense(1))
+model.compile(loss='mean_squared_error', optimizer='adam')
+for i in range(nb_epoch):
+    model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
+    model.reset_states()
+
+
+
+
+
+
+'''
 # repeat experiment
 repeats = 30
 error_scores = list()
@@ -137,3 +156,4 @@ results['rmse'] = error_scores
 print(results.describe())
 results.boxplot()
 pyplot.show()
+'''
