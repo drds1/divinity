@@ -48,7 +48,7 @@ def fit_lstm(X, y, batch_size, nb_epoch, neurons):
 
 if __name__ == '__main__':
     np.random.seed(12345)
-    nlags = 1
+    nlags = 20
     y = generate_test_arima(number_of_epochs=1000)
     X, yn = generate_features_from_timeseries(y,nlags=nlags)
 
@@ -61,12 +61,7 @@ if __name__ == '__main__':
     yt = yscaler.transform(yn.reshape(-1,1))[:,0]
 
 
-    #design rnn using keras
-    #model = keras.Sequential()
-    ##model.add(keras.layers.LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
-    ##model.add(keras.layers.Dense(1))
-    ##model.compile(loss='mean_squared_error', optimizer='adam')
-#
+
     #model.add(keras.layers.Dense(nlags))
     #model.add(keras.layers.RNN(64, return_sequences = True))
     #model.add(keras.layers.Dropout(0.5))
@@ -79,12 +74,31 @@ if __name__ == '__main__':
     #model.summary()
 
 
+    #split train test data
 
     Xtrain, Xtest, ytrain, ytest = train_test_split(Xt,
                                                     yt,
                                                     test_size=0.33,
                                                     random_state=42 )
 
+    #reshape into format required for LSTM
+    #https://machinelearningmastery.com/reshape-input-data-long-short-term-memory-networks-keras/
+    Xtrain_lstm = Xtrain[:,:,np.newaxis]
+    Xtest_lstm = Xtest[:, :, np.newaxis]
+
+    #design rnn using keras
+    neurons = 4
+    model = keras.Sequential()
+
+
+    #model.predict(Xtrain)
+    model.add(keras.layers.LSTM(64,input_shape=(20,1), activation='relu'))
+    model.add(keras.layers.Dense(1,activation='relu'))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.fit(Xtrain_lstm,ytrain)
+    #
+
+    '''
     batch_size = 1
     neurons = 4
     nb_epoch = 3000
@@ -100,6 +114,7 @@ if __name__ == '__main__':
     #model = fit_lstm(Xtrain,ytrain, 1, 3000, 4)
     #model.fit(Xtrain, ytrain)
     ypred = model.predict(Xtest)
+    '''
 
 
 
