@@ -98,6 +98,8 @@ if __name__ == '__main__':
     model.fit(Xtrain_lstm,ytrain)
     #
 
+
+
     '''
     batch_size = 1
     neurons = 4
