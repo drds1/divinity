@@ -1,6 +1,10 @@
 #example from machine learning mastery blog post
+
+#stateful stateless nns
+# https://machinelearningmastery.com/stateful-stateless-lstm-time-series-forecasting-python/
 #https://machinelearningmastery.com/time-series-forecasting-long-short-term-memory-network-python/
 from pandas import DataFrame
+import numpy as np
 from pandas import Series
 from pandas import concat
 from pandas import read_csv
@@ -106,18 +110,41 @@ train, test = supervised_values[0:-12], supervised_values[-12:]
 scaler, train_scaled, test_scaled = scale(train, test)
 
 neurons = 4
-nb_epoch = 3000
+nb_epoch = 30
 batch_size = 1
+
+#stateful version
+#X, y = train[:, 0:-1], train[:, -1]
+#X = X.reshape(X.shape[0], 1, X.shape[1])
+#model = Sequential()
+#model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+#model.add(Dense(1))
+#model.compile(loss='mean_squared_error', optimizer='adam')
+#for i in range(nb_epoch):
+#    model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
+#    model.reset_states()
+#
+
+#stateless version
 X, y = train[:, 0:-1], train[:, -1]
 X = X.reshape(X.shape[0], 1, X.shape[1])
 model = Sequential()
-model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=False))
 model.add(Dense(1))
 model.compile(loss='mean_squared_error', optimizer='adam')
-for i in range(nb_epoch):
-    model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
-    model.reset_states()
+model.fit(X, y, epochs=nb_epoch, batch_size=batch_size, verbose=True, shuffle=True)
 
+
+def forecast(model,X,steps):
+    Xin = np.array(X[-1:,:,:])
+    ypred = []
+    for s in range(steps):
+        print(Xin)
+        ypred.append(model.predict(Xin)[0][0])
+        Xin[0,0,0] = ypred[-1]
+    return ypred
+
+yfc = forecast(model,X,steps=10)
 
 
 

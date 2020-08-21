@@ -95,7 +95,23 @@ if __name__ == '__main__':
     model.add(keras.layers.LSTM(64,input_shape=(20,1), activation='relu'))
     model.add(keras.layers.Dense(1,activation='relu'))
     model.compile(loss='mean_squared_error', optimizer='adam')
-    model.fit(Xtrain_lstm,ytrain)
+    model.fit(Xtrain_lstm,ytrain,nb_epoch=10)
+    ypred = model.predict(Xtest_lstm)[:,0]
+
+
+    #evaluate predictions on plot
+    fig = plt.figure()
+    t = np.arange(len(ytrain)+len(ytest))
+    Ntrain = len(ytrain)
+    ax1 = fig.add_subplot(111)
+    ax1.plot(t[:Ntrain],ytrain,label='train')
+    ax1.plot(t[Ntrain:],ytest,label='test')
+    ax1.plot(t[Ntrain:],ypred,label='pred')
+    plt.legend()
+    plt.savefig('scratch_rnn.png')
+
+
+
     #
 
 
