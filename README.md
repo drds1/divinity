@@ -5,7 +5,7 @@ Divinity is a custom timeseries forecast library. This is currently
  generating any timeseries forecast. 
  
   
- ![Test Image 1](https://github.com/dstarkey23/divinity/blob/master/Documentation/test_divinity_forecast.png)
+ ![Test Image 1](https://github.com/dstarkey23/divinity/blob/master/Documentation/test_divinity_forecast.png){:height="50%" width="50%"}
  
  This is an RnD project aiming to start simply and 
  build additional functionality as needed. Please see
