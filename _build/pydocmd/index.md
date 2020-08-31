@@ -1,4 +1,7 @@
 # Divinity
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 Divinity is a custom timeseries forecast library. This is currently
  in development and designed to automate and
  generalise (as much as possible) the process of
