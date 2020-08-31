@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="../../img/favicon.ico">
-  <title>Example1 - Divinity</title>
+  <title>Quick Use - Divinity</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="../../css/theme.css" />
@@ -18,8 +18,8 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Example1";
-    var mkdocs_page_input_path = "examples/example1.md";
+    var mkdocs_page_name = "Quick Use";
+    var mkdocs_page_input_path = "examples/divinity_quick.md";
     var mkdocs_page_url = null;
   </script>
   
@@ -61,8 +61,8 @@
                     </li>
                 </ul>
                 <p class="caption"><span class="caption-text">Examples</span></p>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="../divinity_quick/">Quick Use</a>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="./">Quick Use</a>
                     </li>
                 </ul>
       </div>
@@ -85,11 +85,15 @@
     <li><a href="../..">Docs</a> &raquo;</li>
     
       
+        
+          <li>Examples &raquo;</li>
+        
+      
     
-    <li>Example1</li>
+    <li>Quick Use</li>
     <li class="wy-breadcrumbs-aside">
       
-        <a href="https://github.com/dstarkey23/divinity/edit/master/docs/examples/example1.md"
+        <a href="https://github.com/dstarkey23/divinity/edit/master/docs/examples/divinity_quick.md"
           class="icon icon-github"> Edit on GitHub</a>
       
     </li>
@@ -100,12 +104,67 @@
           <div role="main">
             <div class="section">
               
-                <p>Let's do something here</p>
-<p>```python</p>
+                <p>Here is a quick start guide to generating a timeseries forecast using divinity</p>
+<pre><code class="python">&quot;&quot;&quot;
+Import the divinity library,
+ numpy to generate a synthetic dataset and matplotlib to visualise the forecast
+&quot;&quot;&quot;
+import divinity as dv
+import matplotlib.pylab as plt
+import numpy as np
+
+
+&quot;&quot;&quot;
+Setup a simple synthetic dataset with a smooth increasing
+trend and a 20-d periodic feature with gaussian random noise
+&quot;&quot;&quot;
+epochs = 100
+forecast = 20
+t = np.arange(epochs + forecast)
+y_test = 0.1 * t + np.sin(2 * np.pi / 20 * t) + np.random.randn(epochs + forecast) * 0.5
+
+&quot;&quot;&quot;
+generate a 20 step forecast and
+calculate 95pc confidence limits
+&quot;&quot;&quot;
+dfc = dv.divinity(forecast_length=forecast, confidence_interval=95.0)
+dfc.fit(y_test[:epochs])
+y_forecast = dfc.predict()
+
+
+&quot;&quot;&quot;
+visualise the results in matplotlib
+&quot;&quot;&quot;
+fig = plt.figure()
+ax1 = fig.add_subplot(111)
+ax1.plot(t, y_test, label=&quot;True&quot;, color=&quot;k&quot;)
+ax1.plot(t[epochs:], y_forecast, label=&quot;Forecast&quot;, color=&quot;b&quot;)
+ax1.fill_between(
+    t[epochs:],
+    y_forecast - dfc.ystd,
+    y_forecast + dfc.ystd,
+    alpha=0.3,
+    color=&quot;b&quot;,
+    label=None,
+)
+ax1.set_ylabel(&quot;ROI timeseries&quot;)
+ax1.set_xlabel(&quot;Day&quot;)
+plt.grid(b=None, which=&quot;major&quot;, axis=&quot;both&quot;)
+plt.legend()
+plt.tight_layout()
+plt.savefig(&quot;../notebooks/test_divinity_forecast2.png&quot;)
+</code></pre>
               
             </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../../config/" class="btn btn-neutral" title="Config"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -130,6 +189,8 @@
       
           <a href="https://github.com/dstarkey23/divinity/" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
       
+      
+        <span><a href="../../config/" style="color: #fcfcfc;">&laquo; Previous</a></span>
       
       
     </span>
