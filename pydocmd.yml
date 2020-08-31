@@ -10,7 +10,7 @@ pages:
       About Divinity: endpoints/about-endpoints.md << docs/endpoints/about-endpoints.md
   - Config: config.md << docs/config/config.md
   - Examples:
-      Example 1: examples/example1.md
+      Quick Use: examples/divinity_quick.md
 theme:
   name: readthedocs
   collapse_navigation: true

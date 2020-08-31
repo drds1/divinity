@@ -36,7 +36,7 @@ if __name__ == '__main__':
     plt.grid(b=None, which='major', axis='both')
     plt.legend()
     plt.tight_layout()
-    plt.savefig('../Doccumentation/test_divinity_forecast.png')
+    plt.savefig('../notebooks/test_divinity_forecast.png')
 
     import sklearn.linear_model
     model = sklearn.linear_model.LinearRegression(fit_intercept=False)
