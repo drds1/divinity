@@ -24,4 +24,3 @@ Example 1
 from coolmodule import cool_class_1
 df = cool_class_1().something_cool_1().to_df()
 ```
-

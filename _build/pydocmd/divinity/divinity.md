@@ -33,4 +33,3 @@ divinity.forecast(steps)
 
 extend the forecast (must already have used .fit)
 :return:
-

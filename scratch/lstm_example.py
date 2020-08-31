@@ -1,8 +1,8 @@
-#example from machine learning mastery blog post
+# example from machine learning mastery blog post
 
-#stateful stateless nns
+# stateful stateless nns
 # https://machinelearningmastery.com/stateful-stateless-lstm-time-series-forecasting-python/
-#https://machinelearningmastery.com/time-series-forecasting-long-short-term-memory-network-python/
+# https://machinelearningmastery.com/time-series-forecasting-long-short-term-memory-network-python/
 from pandas import DataFrame
 import numpy as np
 from pandas import Series
@@ -21,7 +21,7 @@ import numpy
 
 # date-time parsing function for loading the dataset
 def parser(x):
-    return datetime.strptime('190' + x, '%Y-%m')
+    return datetime.strptime("190" + x, "%Y-%m")
 
 
 # frame a sequence as a supervised learning problem
@@ -76,9 +76,15 @@ def fit_lstm(train, batch_size, nb_epoch, neurons):
     X, y = train[:, 0:-1], train[:, -1]
     X = X.reshape(X.shape[0], 1, X.shape[1])
     model = Sequential()
-    model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+    model.add(
+        LSTM(
+            neurons,
+            batch_input_shape=(batch_size, X.shape[1], X.shape[2]),
+            stateful=True,
+        )
+    )
     model.add(Dense(1))
-    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.compile(loss="mean_squared_error", optimizer="adam")
     for i in range(nb_epoch):
         model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
         model.reset_states()
@@ -93,7 +99,14 @@ def forecast_lstm(model, batch_size, X):
 
 
 # load dataset
-series = read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+series = read_csv(
+    "shampoo-sales.csv",
+    header=0,
+    parse_dates=[0],
+    index_col=0,
+    squeeze=True,
+    date_parser=parser,
+)
 
 # transform data to be stationary
 raw_values = series.values
@@ -113,44 +126,46 @@ neurons = 4
 nb_epoch = 300
 batch_size = 1
 
-#stateful version
-#X, y = train[:, 0:-1], train[:, -1]
-#X = X.reshape(X.shape[0], 1, X.shape[1])
-#model = Sequential()
-#model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
-#model.add(Dense(1))
-#model.compile(loss='mean_squared_error', optimizer='adam')
-#for i in range(nb_epoch):
+# stateful version
+# X, y = train[:, 0:-1], train[:, -1]
+# X = X.reshape(X.shape[0], 1, X.shape[1])
+# model = Sequential()
+# model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+# model.add(Dense(1))
+# model.compile(loss='mean_squared_error', optimizer='adam')
+# for i in range(nb_epoch):
 #    model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
 #    model.reset_states()
 #
 
-#stateless version
+# stateless version
 X, y = train[:, 0:-1], train[:, -1]
 X = X.reshape(X.shape[0], 1, X.shape[1])
 model = Sequential()
-model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=False))
+model.add(
+    LSTM(
+        neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=False
+    )
+)
 model.add(Dense(1))
-model.compile(loss='mean_squared_error', optimizer='adam')
+model.compile(loss="mean_squared_error", optimizer="adam")
 model.fit(X, y, epochs=nb_epoch, batch_size=batch_size, verbose=True, shuffle=True)
 
 
-def forecast(model,X,steps):
-    Xin = np.array(X[-1:,:,:])
+def forecast(model, X, steps):
+    Xin = np.array(X[-1:, :, :])
     ypred = []
     for s in range(steps):
         print(Xin)
         ypred.append(model.predict(Xin)[0][0])
-        Xin[0,0,0] = ypred[-1]
+        Xin[0, 0, 0] = ypred[-1]
     return ypred
 
-yfc = forecast(model,X,steps=10)
+
+yfc = forecast(model, X, steps=10)
 
 
-
-
-
-'''
+"""
 # repeat experiment
 repeats = 30
 error_scores = list()
@@ -183,4 +198,4 @@ results['rmse'] = error_scores
 print(results.describe())
 results.boxplot()
 pyplot.show()
-'''
+"""

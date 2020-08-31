@@ -7,10 +7,12 @@ command:
 
 """
 
+
 class Foo(object):
     """
     Foo encapsulates a name and an age.
     """
+
     def __init__(self, name, age):
         """
         Construct a new 'Foo' object.
@@ -22,12 +24,14 @@ class Foo(object):
         self.name = name
         self.age = age
 
+
 def bar(baz):
     """
     Prints baz to the display.
     """
     print(baz)
 
-if __name__ == '__main__':
-    f = Foo('John Doe', 42)
+
+if __name__ == "__main__":
+    f = Foo("John Doe", 42)
     bar("hello world")
