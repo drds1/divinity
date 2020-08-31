@@ -1,0 +1,17 @@
+site_name: Divinity
+repo_url: https://github.com/dstarkey23/divinity
+generate:
+  - divinity/divinity.md:
+      - divinity.__init__.divinity++
+
+pages:
+  - Home: index.md << README.md
+  - Endpoints:
+      About Divinity: endpoints/about-endpoints.md << docs/endpoints/about-endpoints.md
+  - Config: config.md << docs/config/config.md
+  - Examples:
+      Example 1: examples/example1.md
+theme:
+  name: readthedocs
+  collapse_navigation: true
+  search_index_only: false
