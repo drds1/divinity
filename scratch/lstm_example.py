@@ -110,7 +110,7 @@ train, test = supervised_values[0:-12], supervised_values[-12:]
 scaler, train_scaled, test_scaled = scale(train, test)
 
 neurons = 4
-nb_epoch = 30
+nb_epoch = 300
 batch_size = 1
 
 #stateful version
