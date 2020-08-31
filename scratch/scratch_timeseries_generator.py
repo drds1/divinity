@@ -66,7 +66,7 @@ class lstm_mod:
             generator, steps_per_epoch=steps_per_epoch, epochs=epochs, verbose=verbose
         )
 
-    def predict(self, X):
+    def predict(self, X, nsteps=1):
         """
         return a one step prediction
         :param X:
@@ -80,13 +80,25 @@ class lstm_mod:
             Xt, Xt, length=self._n_features, batch_size=len(Xt)
         )
         X_test = test_generator[0][0]
-        pred = model.predict(X_test, verbose=0)
+
+        # evaluate the n-step predictions recursively
+        all_predictions = np.zeros((len(X_test), nsteps))
+        for idx in range(nsteps):
+            pred = model.predict(X_test, verbose=0)
+            X_test = np.roll(X_test, -1, axis=1)
+            X_test[:, -1, :] = pred
+            all_predictions[:, idx] = pred[:, 0]
 
         # return the inverse transform
-        return self.Xscaler.inverse_transform(pred)
+        return self.Xscaler.inverse_transform(all_predictions)
 
 
 if __name__ == "__main__":
+    """
+    Manually generate synthetic data and build LSTM network to
+    fit
+    """
+
     # generate synthetic data
     data = utils.generate_test_arima(number_of_epochs=1000)
     target = np.array(data)
@@ -119,7 +131,7 @@ if __name__ == "__main__":
     model.add(keras.layers.Dense(1))
     model.compile(optimizer="adam", loss="mse")
     # fit model
-    model.fit_generator(generator, steps_per_epoch=1, epochs=500, verbose=True)
+    model.fit_generator(generator, steps_per_epoch=1, epochs=50, verbose=True)
 
     # get the 1-step predictions
     test_generator = keras.preprocessing.sequence.TimeseriesGenerator(
@@ -129,10 +141,16 @@ if __name__ == "__main__":
     yhat = model.predict(X_test, verbose=0)
     print(yhat)
 
-    # evaluate predictions
-
     # convert to keras feature / labeled required format
     data_gen = keras.preprocessing.sequence.TimeseriesGenerator(
         data, target, length=4, sampling_rate=1, batch_size=len(target)
     )
     X, y = data_gen[0]
+
+    """
+    Now test the lstm_mod class
+    """
+    lmod = lstm_mod()
+    lmod.fit(data_train, steps_per_epoch=1, epochs=39, verbose=True)
+    p1 = lmod.predict(data_test, nsteps=1)
+    p7 = lmod.predict(data_test, nsteps=7)
