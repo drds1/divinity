@@ -1,3 +1,9 @@
+"""
+use keras TimeseriesGenerator to format input timeseries
+for lstm forecasting
+https://machinelearningmastery.com/how-to-use-the-timeseriesgenerator-for-time-series-forecasting-in-keras/
+"""
+
 import keras
 import numpy as np
 import scratch_rnn as utils
