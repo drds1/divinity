@@ -9,6 +9,7 @@ import numpy as np
 import scratch_rnn as utils
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pylab as plt
 
 
 class lstm_mod:
@@ -84,13 +85,53 @@ class lstm_mod:
         # evaluate the n-step predictions recursively
         all_predictions = np.zeros((len(X_test), nsteps))
         for idx in range(nsteps):
-            pred = model.predict(X_test, verbose=0)
+            pred = self.model.predict(X_test, verbose=0)
             X_test = np.roll(X_test, -1, axis=1)
             X_test[:, -1, :] = pred
             all_predictions[:, idx] = pred[:, 0]
 
         # return the inverse transform
         return self.Xscaler.inverse_transform(all_predictions)
+
+    @staticmethod
+    def correlation_plots(
+        testdata,
+        displaysteps=[1, 3, 5],
+        file_correlation_report="correlation_tests.png",
+    ):
+        p7 = testdata
+        fig = plt.figure()
+        npred = len(p7)
+        steptests = [i for i in displaysteps if i - 1 < np.shape(p7)[1]]
+        true = data_test[-npred:, 0]
+        idx = 1
+        for step in steptests:
+            pred = p7[:, step - 1]
+            r2 = np.corrcoef(true, pred)[0, 1]
+            var = np.sum((pred - true) ** 2) / npred
+            rms = np.sqrt(var)
+            ax1 = fig.add_subplot(2, len(steptests), idx)
+            ax1.scatter(true, pred)
+            ax1.set_xlabel("true")
+            ax1.set_ylabel("predicted")
+            xlim = list(ax1.get_xlim())
+            ax1.plot(xlim, xlim, ls="--", color="k", label=None)
+            ax1.set_xlim(xlim)
+            ax1.set_ylim(xlim)
+            ax1.set_title(str(step) + "-step: r2=" + str(np.round(r2, 2)))
+            idx += 1
+        ax1 = fig.add_subplot(2, 1, 2)
+        ax1.set_xlabel("step")
+        ax1.set_ylabel("r2")
+        ax1.set_title("Correlation vs step-size")
+        r2save = []
+        stepsave = []
+        for i in range(np.shape(p7)[1]):
+            stepsave.append(i + 1)
+            r2save.append(np.corrcoef(true, p7[:, i])[0, 1])
+        ax1.plot(stepsave, r2save)
+        plt.tight_layout()
+        plt.savefig(file_correlation_report)
 
 
 if __name__ == "__main__":
@@ -154,3 +195,7 @@ if __name__ == "__main__":
     lmod.fit(data_train, steps_per_epoch=1, epochs=39, verbose=True)
     p1 = lmod.predict(data_test, nsteps=1)
     p7 = lmod.predict(data_test, nsteps=7)
+    # generate correlation plots from test predictions
+    lmod.correlation_plots(
+        p7, displaysteps=[1, 5, 7], file_correlation_report="correlation_tests.png"
+    )
