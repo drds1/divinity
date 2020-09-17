@@ -23,6 +23,8 @@ setup(
         "numpy",
         "matplotlib",
         "statsmodels",
+        "tensorflow",
+        "keras",
         "pre-commit",
         "pydocstyle",
     ],
