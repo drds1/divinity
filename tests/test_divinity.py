@@ -1,3 +1,10 @@
+import pathlib
+import os
+import sys
+
+# need to append package to path for unit tests
+filePath = pathlib.Path(__file__).parent.resolve()
+sys.path.append(os.path.join(filePath, ".."))
 import unittest
 import numpy as np
 import divinity as dv

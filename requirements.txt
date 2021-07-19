@@ -1,0 +1,9 @@
+pandas
+numpy
+matplotlib
+statsmodels
+pre-commit
+pydocstyle
+pytest
+pathlib
+scikit-learn

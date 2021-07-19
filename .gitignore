@@ -131,3 +131,5 @@ dmypy.json
 #docs/
 #pydocmd.yml
 _build
+
+venv/

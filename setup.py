@@ -27,6 +27,8 @@ setup(
         "keras",
         "pre-commit",
         "pydocstyle",
+        "pytest",
+        "scikit-learn",
     ],
 )
 
