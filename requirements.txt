@@ -6,3 +6,4 @@ pre-commit
 pydocstyle
 pytest
 pathlib
+scikit-learn

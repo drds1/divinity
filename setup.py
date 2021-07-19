@@ -26,6 +26,7 @@ setup(
         "pre-commit",
         "pydocstyle",
         "pytest",
+        "scikit-learn",
     ],
 )
 
