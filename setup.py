@@ -25,6 +25,7 @@ setup(
         "statsmodels",
         "pre-commit",
         "pydocstyle",
+        "pytest",
     ],
 )
 
