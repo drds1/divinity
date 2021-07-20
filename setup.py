@@ -11,9 +11,9 @@ from setuptools import setup
 setup(
     name="divinity",
     version="0.1",
-    url="https://github.com/dstarkey23/divinity",
-    author="David Starkey",
-    author_email="davidstarkey29@gmail.com",
+    url="https://github.com/drds1/divinity",
+    author="drds.gh1@gmail.com",
+    author_email="drds.gh1@gmail.com",
     description="Auto Timeseries Forecast Package",
     license="Apache",
     packages=["divinity"],
