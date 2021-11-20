@@ -416,7 +416,7 @@ class divinity:
         self._chosen_features = all_chosen_features
         self._greedy_results_trend_seasonal = greedy_results_trend_seasonal
 
-    def _fit_trend_season(self, y):
+    def _fit_trend_season(self, y, weight=None):
         """
         fit the trend and seasonal components
         :param X:
@@ -432,11 +432,16 @@ class divinity:
         if self.optimise_trend_season_features is True:
             self._auto_feature_select(self.features[: self._N], y)
             self.features = self.features[self._chosen_features]
-        self.trend_seasonal_model.fit(self.features[: self._N], y)
+        self.trend_seasonal_model.fit(self.features[: self._N], y, sample_weight=weight)
 
         # compute the model residuals to pass on
         # to the residual model
         self._trend_all = self.trend_seasonal_model.predict(self.features)
+
+        # deal with intrpolated data if present
+        if self._idxitp is not None:
+            y[self._idxitp] = self._trend_all[: self._N][self._idxitp]
+
         self._trend_pred_res = y - self._trend_all[: self._N]
         sig = get_error(self._trend_pred_res, conf_limit=self.confidence_interval)
         self._trend_forecast_err = (
@@ -458,6 +463,7 @@ class divinity:
             forecast = self._live_res_model_fit.predict(start=0, end=self._Ntot - 1)
             self._yres_all = forecast
             self._yres_forecast = forecast[self._N :]
+            self._yres_forecast = forecast[self._N :]
             sig = get_error(
                 forecast[: self._N] - self._trend_pred_res,
                 conf_limit=self.confidence_interval,
@@ -476,16 +482,29 @@ class divinity:
             self._yres_forecast = np.zeros(self.forecast_length)
             self._yres_forecast_err = np.zeros(self.forecast_length)
 
-    def fit(self, y):
+    def fit(self, y, tinput=None):
         """
         combine the above steps into a general fit function
         :param X:
         :param y:
         :return:
         """
-        self._y = y
+        # Deal with data gaps if present
+        if tinput is not None:
+            dt = 1  # np.median(tinput[1:]-tinput[:-1])
+            tgrid = np.arange(tinput[0], tinput[-1] + dt, dt)
+            ygrid = np.interp(tgrid, tinput, y)
+            self._idxitp = ~np.isin(tgrid, tinput)
+            self._y = ygrid
+            self._weight = np.ones(len(tgrid))
+            self._weight[self._idxitp] = 0
+        else:
+            self._weight = np.ones(len(y))
+            self._y = y
+            self._idxitp = None
+
         # fit the trend and seasonal components
-        self._fit_trend_season(y)
+        self._fit_trend_season(self._y, weight=self._weight)
 
         # fit the residual arima model
         self._fit_residual_model()
