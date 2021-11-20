@@ -479,6 +479,7 @@ class divinity:
             warnings.warn(
                 "Residual ARIMA model failure... Using only trend and seasonal components."
             )
+            self._yres_all = np.zeros(self._Ntot)
             self._yres_forecast = np.zeros(self.forecast_length)
             self._yres_forecast_err = np.zeros(self.forecast_length)
 
@@ -496,6 +497,8 @@ class divinity:
             ygrid = np.interp(tgrid, tinput, y)
             self._idxitp = ~np.isin(tgrid, tinput)
             self._y = ygrid
+            self._N = len(ygrid)
+            self._Ntot = self._N + self.forecast_length
             self._weight = np.ones(len(tgrid))
             self._weight[self._idxitp] = 0
         else:
