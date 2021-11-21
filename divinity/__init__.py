@@ -411,10 +411,13 @@ class divinity:
             feature_groups=trend_seasonality_groups,
             features_compulsory=greedy_results_trend["chosen_features"],
         )
-        greedy_results_trend_seasonal = greedy_select_trend_seasonal.fit()
-        all_chosen_features = greedy_results_trend_seasonal["chosen_features"]
+        if len(seasonal_features) > 0:
+            greedy_results_trend_seasonal = greedy_select_trend_seasonal.fit()
+            self._greedy_results_trend_seasonal = greedy_results_trend_seasonal
+            all_chosen_features = greedy_results_trend_seasonal["chosen_features"]
+        else:
+            all_chosen_features = list(features.columns)
         self._chosen_features = all_chosen_features
-        self._greedy_results_trend_seasonal = greedy_results_trend_seasonal
 
     def _fit_trend_season(self, y, weight=None):
         """
