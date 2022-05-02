@@ -339,7 +339,7 @@ class divinity:
             store_cv_values=False,
         ),
         residual_model=arima_model.ARIMA,
-        optimise_trend_season_features=True,
+        optimise_trend_season_features=False,
         residual_model_kwargs={"order": (2, 0, 2), "exog": None},
         residual_model_fit_kwargs={"trend": "nc", "disp": 0},
     ):
