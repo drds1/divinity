@@ -1,0 +1,58 @@
+name: Tests
+
+# Fast tests (unit and smoke, a couple of minutes) run on every push to
+# master and every pull request. The slow multi-seed coverage checks only
+# run by hand: Actions tab -> Tests -> "Run workflow" with tier "full".
+# The repository is public, so GitHub-hosted runners cost nothing.
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "**.md"
+      - "docs/images/**"
+      - "notebooks/**"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/images/**"
+      - "notebooks/**"
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "fast (unit and smoke tests) or full (plus coverage checks)"
+        type: choice
+        options: [fast, full]
+        default: fast
+
+# A newer push to the same branch cancels a run still in progress.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.tier == 'full' && 30 || 15 }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        env:
+          MPLBACKEND: Agg
+          TIER: ${{ inputs.tier }}
+        run: |
+          if [ "$TIER" = "full" ]; then pytest; else pytest -m "not slow"; fi

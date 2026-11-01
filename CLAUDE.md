@@ -43,6 +43,11 @@ python docs/make_figures.py                    # README figures
 pre-commit run --all-files                     # black and whitespace checks
 ```
 
+## CI and releases
+
+- [.github/workflows/tests.yml](.github/workflows/tests.yml) runs the fast tests on pushes to master and on pull requests. The slow tests run only when triggered by hand with tier "full".
+- [.github/workflows/publish.yml](.github/workflows/publish.yml) publishes to PyPI via trusted publishing when a GitHub release is created. To release, bump `version` in `pyproject.toml` and `__version__` in `divinity/__init__.py`, then create the release (e.g. `gh release create v0.2.1`).
+
 ## Things to keep true
 
 - If you change the fitting algorithm, rerun the benchmark and the figure script and update the README table. The README claims are only valid if these match.
