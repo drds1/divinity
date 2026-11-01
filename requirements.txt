@@ -1,9 +1,2 @@
-pandas
-numpy==1.22.4
-matplotlib
-statsmodels
-pre-commit
-pydocstyle
-pytest
-pathlib
-scikit-learn
+# Development install. The package itself is defined in pyproject.toml.
+-e .[dev]

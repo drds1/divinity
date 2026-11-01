@@ -1,27 +1,17 @@
-# syntax=docker/dockerfile:1.0.0-experimental
-FROM amancevice/pandas:0.23.4-python3-slim
+FROM python:3.12-slim
 
-WORKDIR /Main
+RUN useradd --create-home app
+WORKDIR /home/app/divinity
 
-COPY requirements.txt ./
+COPY pyproject.toml README.md LICENSE ./
+COPY divinity/ divinity/
+COPY tests/ tests/
+COPY benchmarks/ benchmarks/
 
-RUN mkdir divinity
-COPY divinity/ /Main/divinity
-#
-RUN mkdir tests
-COPY tests/ /Main/tests/
-#
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir ".[dev]"
 
-#add divinity library to python path
-
-#CMD ["python /Main/disease_spread/main.py"]
+USER app
 CMD ["pytest"]
 
-# docker build -f Docker/Dockerfile -t ds207/divinity .
-# docker run -it ds207/divinity bash
-# docker push ds207/divinity
-
-#delete all containers and images
-#docker rm -vf $(docker ps -a -q)
-#docker rmi -f $(docker images -a -q)
+# docker build -f Docker/Dockerfile -t divinity .
+# docker run --rm divinity

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "divinity"
+version = "0.2.0"
+description = "Automatic timeseries forecasting with honest prediction intervals"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "dstarkey23", email = "drds.gh1@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "statsmodels>=0.14",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pre-commit>=3",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "ipykernel>=6",
+]
+
+[project.urls]
+Homepage = "https://github.com/drds1/divinity"
+
+[tool.setuptools]
+packages = ["divinity"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: coverage checks over many random seeds (deselect with -m 'not slow')"]

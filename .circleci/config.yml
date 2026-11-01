@@ -1,23 +1,37 @@
-version: 2
+version: 2.1
+
 jobs:
-  build:
+  test:
+    parameters:
+      python:
+        type: string
     docker:
-      - image: circleci/python:3.7
+      - image: cimg/python:<< parameters.python >>
     steps:
       - checkout
       - restore_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps-<< parameters.python >>-{{ checksum "pyproject.toml" }}
       - run:
+          name: Install
           command: |
-            python3 -m venv venv
+            python -m venv venv
             . venv/bin/activate
-            pip install -r requirements.txt
+            pip install --upgrade pip
+            pip install -e ".[dev]"
       - save_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps-<< parameters.python >>-{{ checksum "pyproject.toml" }}
           paths:
-            - "venv"
+            - venv
       - run:
-          name: Running tests
+          name: Tests
           command: |
             . venv/bin/activate
             pytest
+
+workflows:
+  test:
+    jobs:
+      - test:
+          matrix:
+            parameters:
+              python: ["3.10", "3.12"]
