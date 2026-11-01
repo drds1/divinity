@@ -20,7 +20,7 @@ from statsmodels.tsa.arima.model import ARIMA
 
 from .features import FeatureGroup, degenerate_columns, design_matrix, seasonal_groups
 from .periods import default_periods, detect_periods, merge_periods
-from .residuals import fit_quietly, has_unit_root, select_order
+from .residuals import fit_quietly, has_unit_root, is_degenerate, rank_orders
 from .selection import forward_select, lag1_autocorrelation
 
 MIN_OBSERVATIONS = 10
@@ -140,6 +140,13 @@ class Forecaster:
                 gamma=self.search_penalty,
                 forced=forced,
                 rho=rho,
+                # a drift's effect grows over the whole horizon, so admit it
+                # at the AIC price rather than BIC, as auto.arima does
+                aic_groups=(
+                    [g for g in groups if g.kind == "trend"]
+                    if self.differenced_
+                    else ()
+                ),
             )
             self.groups_ = selection.groups
             X = self._features(np.arange(n))
@@ -229,22 +236,43 @@ class Forecaster:
             return (0, 0, 0)
         if self.arima != "auto":
             return self._fixed_order()
-        order, _ = select_order(resid, 1 if self.differenced_ else 0)
-        return order
+        d = 1 if self.differenced_ else 0
+        ranked = [order for order, _ in rank_orders(resid, d)]
+        # kept so the joint fit can fall back if the best order degenerates
+        self._order_candidates = ranked[1:] + [(0, d, 0)]
+        return ranked[0] if ranked else (0, d, 0)
 
     def _fit_joint(self, values, X, order):
+        """
+        Fit the features and ARIMA errors together. With an automatic order,
+        degenerate fits are rejected in favour of the next best order.
+        """
         exog = X.to_numpy() if X.shape[1] else None
-        trend = "c" if order[1] == 0 else "n"
-        try:
-            return fit_quietly(ARIMA(values, exog=exog, order=order, trend=trend))
-        except (np.linalg.LinAlgError, ValueError) as err:
-            warnings.warn(
-                "ARIMA{} failed ({}), falling back to white noise residuals".format(
-                    order, err
+        fallbacks = (
+            list(getattr(self, "_order_candidates", [])) if self.arima == "auto" else []
+        )
+        candidates = [order] + [o for o in fallbacks if o != order]
+        for i, candidate in enumerate(candidates):
+            trend = "c" if candidate[1] == 0 else "n"
+            try:
+                res = fit_quietly(
+                    ARIMA(values, exog=exog, order=candidate, trend=trend)
                 )
-            )
-            self.order_ = (0, 0, 0)
-            return fit_quietly(ARIMA(values, exog=exog, order=(0, 0, 0), trend="c"))
+            except (np.linalg.LinAlgError, ValueError) as err:
+                if i == len(candidates) - 1:
+                    warnings.warn(
+                        "ARIMA{} failed ({}), falling back to white noise "
+                        "residuals".format(candidate, err)
+                    )
+                    self.order_ = (0, 0, 0)
+                    return fit_quietly(
+                        ARIMA(values, exog=exog, order=(0, 0, 0), trend="c")
+                    )
+                continue
+            if i < len(candidates) - 1 and fallbacks and is_degenerate(res):
+                continue
+            self.order_ = candidate
+            return res
 
     # -------------------------------------------------------------- predict
 
@@ -381,7 +409,9 @@ class Forecaster:
         state = "fitted" if hasattr(self, "groups_") else "not fitted"
         return "Forecaster({})".format(state)
 
-    def plot(self, forecast, actual=None, ax=None, history=None, title=None):
+    def plot(
+        self, forecast, actual=None, ax=None, history=None, title=None, highlight=None
+    ):
         """
         Plot the training data, the forecast and its prediction interval.
 
@@ -391,12 +421,16 @@ class Forecaster:
         :param ax: matplotlib Axes to draw on. A new figure is made if None.
         :param history: number of training points to show (default all).
         :param title: optional title.
+        :param highlight: optional Series of points to mark, e.g. readings
+            that fell outside the prediction interval.
         :return: the matplotlib Axes.
         """
         from .plotting import plot_forecast
 
         hist = self.history_ if history is None else self.history_.iloc[-history:]
-        return plot_forecast(hist, forecast, actual=actual, ax=ax, title=title)
+        return plot_forecast(
+            hist, forecast, actual=actual, ax=ax, title=title, highlight=highlight
+        )
 
     def _check_fitted(self):
         if not hasattr(self, "groups_"):

@@ -121,15 +121,16 @@ def fit_quietly(model):
         return model.fit()
 
 
-def select_order(resid, d, max_p=2, max_q=2):
+def rank_orders(resid, d, max_p=2, max_q=2):
     """
-    Pick (p, d, q) for the residuals by BIC over a small grid.
+    Fit ARIMA(p, d, q) to the residuals over a small grid and rank the
+    orders by BIC.
 
     :param resid: residual series (NaN allowed).
     :param d: differencing order decided beforehand (0 or 1).
-    :return: (order, fitted results) for the best model.
+    :return: list of (order, fitted results), best first.
     """
-    best = None
+    fits = []
     trend = "c" if d == 0 else "n"
     for p in range(max_p + 1):
         for q in range(max_q + 1):
@@ -137,10 +138,30 @@ def select_order(resid, d, max_p=2, max_q=2):
                 res = fit_quietly(ARIMA(resid, order=(p, d, q), trend=trend))
             except (np.linalg.LinAlgError, ValueError):
                 continue
-            if not np.isfinite(res.bic):
-                continue
-            if best is None or res.bic < best[1].bic:
-                best = ((p, d, q), res)
-    if best is None:
-        return (0, d, 0), None
-    return best
+            if np.isfinite(res.bic):
+                fits.append(((p, d, q), res))
+    return sorted(fits, key=lambda f: f[1].bic)
+
+
+def select_order(resid, d, max_p=2, max_q=2):
+    """
+    The BIC best (p, d, q) for the residuals.
+
+    :return: (order, fitted results), or ((0, d, 0), None) if nothing fits.
+    """
+    ranked = rank_orders(resid, d, max_p, max_q)
+    return ranked[0] if ranked else ((0, d, 0), None)
+
+
+def is_degenerate(res, tol=1.01):
+    """
+    True if a fitted ARIMA sits on the edge of its parameter space, with an
+    AR or MA root on or next to the unit circle. Such fits usually have an
+    AR root nearly cancelled by an MA root, which leaves the regression
+    coefficients unidentified and the forecast intervals meaningless.
+    """
+    roots = [np.atleast_1d(res.arroots), np.atleast_1d(res.maroots)]
+    for r in roots:
+        if r.size and np.min(np.abs(r)) < tol:
+            return True
+    return not np.all(np.isfinite(np.diag(np.asarray(res.cov_params()))))

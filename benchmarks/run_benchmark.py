@@ -5,7 +5,7 @@ structure, and how its error compares with a naive forecast.
 
 Usage::
 
-    python benchmarks/coverage.py --seeds 100 --out benchmarks/results.md
+    python benchmarks/run_benchmark.py --seeds 100 --out benchmarks/results.md
 """
 
 import argparse

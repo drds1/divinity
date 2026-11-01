@@ -1,13 +1,17 @@
 """
-Regenerate the README figures from the synthetic scenarios.
+Regenerate the README figures.
 
-Every figure uses seed 0, the same seed as the smoke tests, so nothing is
-hand picked. Run from the repository root::
+Scenario figures come from the synthetic scenarios with seed 0, the same
+seed as the smoke tests, so nothing is hand picked. Application figures
+come from running the code snippets in the README's "Practical
+applications" section, so the charts always match the code shown. Run from
+the repository root::
 
     python docs/make_figures.py
 """
 
 import os
+import re
 import warnings
 
 import matplotlib
@@ -19,6 +23,8 @@ import divinity as dv  # noqa: E402
 from divinity import synthetic  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(__file__), "images")
+README = os.path.join(os.path.dirname(__file__), "..", "README.md")
+EXAMPLE = re.compile(r"<!-- example: (\w+) -->\s*```python\n(.*?)```", re.S)
 
 # how much history to show, so long daily series stay readable
 HISTORY = {"daily_multi_seasonal": 400, "random_walk": 150}
@@ -53,7 +59,38 @@ def describe(components):
     return "Found: " + ", ".join(parts)
 
 
-def main():
+def readme_examples(path=README):
+    """
+    The tagged code snippets in the README, as a dict of name to code.
+    """
+    with open(path, encoding="utf-8") as f:
+        return dict(EXAMPLE.findall(f.read()))
+
+
+def run_example(code):
+    """
+    Run one README snippet and return the figure it drew.
+    """
+    plt.close("all")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        exec(compile(code, "<README example>", "exec"), {"__name__": "__example__"})
+    return plt.gcf()
+
+
+def application_figures():
+    out = os.path.join(OUT, "applications")
+    os.makedirs(out, exist_ok=True)
+    for name, code in readme_examples().items():
+        fig = run_example(code)
+        fig.tight_layout()
+        path = os.path.join(out, name + ".png")
+        fig.savefig(path, dpi=110)
+        plt.close(fig)
+        print("wrote", path)
+
+
+def scenario_figures():
     os.makedirs(OUT, exist_ok=True)
     for name in synthetic.SCENARIOS:
         s = synthetic.make(name, seed=0)
@@ -76,6 +113,11 @@ def main():
         ax.figure.savefig(path, dpi=110)
         plt.close(ax.figure)
         print("wrote", path)
+
+
+def main():
+    scenario_figures()
+    application_figures()
 
 
 if __name__ == "__main__":

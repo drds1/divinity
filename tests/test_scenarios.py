@@ -14,7 +14,7 @@ import divinity as dv
 from divinity import synthetic
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "benchmarks"))
-from coverage import run_one, structure_ok  # noqa: E402
+from run_benchmark import run_one, structure_ok  # noqa: E402
 
 
 @pytest.mark.parametrize("name", list(synthetic.SCENARIOS))

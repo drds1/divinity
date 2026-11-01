@@ -48,3 +48,33 @@ def test_fill_short_gaps_leaves_long_gaps():
     out = fill_short_gaps(r)
     np.testing.assert_allclose(out[:8], np.arange(8))
     assert np.isnan(out[8:11]).all()
+
+
+def test_unit_root_falls_back_when_too_gappy():
+    from divinity.residuals import _adf_with_gaps
+
+    rng = np.random.default_rng(0)
+    y = np.cumsum(rng.normal(size=200))
+    y[rng.random(200) < 0.8] = np.nan
+    assert _adf_with_gaps(y, "ct") is None
+    assert has_unit_root(y)
+
+
+def test_degenerate_fit_detected():
+    from types import SimpleNamespace
+
+    from divinity.residuals import is_degenerate
+
+    def fit(ar, ma, se=1.0):
+        return SimpleNamespace(
+            arroots=np.array(ar),
+            maroots=np.array(ma),
+            cov_params=lambda: np.eye(2) * se,
+        )
+
+    assert not is_degenerate(fit([2.0], [3.0]))
+    assert not is_degenerate(fit([], []))
+    # an AR root on the unit circle nearly cancelled by an MA root
+    assert is_degenerate(fit([1.0, 1.004], [1.0004]))
+    assert is_degenerate(fit([1.5], [1.005]))
+    assert is_degenerate(fit([2.0], [3.0], se=np.nan))

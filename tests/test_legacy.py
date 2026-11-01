@@ -27,3 +27,13 @@ def test_gen_fake_normalises_to_unit_range():
     np.testing.assert_allclose(varying.min(), 0)
     np.testing.assert_allclose(varying.max(), 1)
     assert out["target"].shape == (100,)
+
+
+def test_legacy_features_and_period_warning():
+    y = np.sin(np.arange(100) * 2 * np.pi / 10)
+    with pytest.warns(DeprecationWarning):
+        model = dv.divinity(forecast_length=5)
+    model.fit(y)
+    assert model.features.shape[0] == 100
+    with pytest.warns(UserWarning, match="ignored"):
+        dv.gen_season(20, periods=[5, 15])

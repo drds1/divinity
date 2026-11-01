@@ -75,7 +75,14 @@ def quasi_difference(values, rho):
 
 
 def forward_select(
-    y, candidates, pool_sizes, drop_columns=(), gamma=1.0, forced=(), rho=0.0
+    y,
+    candidates,
+    pool_sizes,
+    drop_columns=(),
+    gamma=1.0,
+    forced=(),
+    rho=0.0,
+    aic_groups=(),
 ):
     """
     Greedily add the candidate group that lowers the score most, until no
@@ -94,6 +101,8 @@ def forward_select(
     :param forced: groups that are always included and carry no penalty.
     :param rho: AR(1) coefficient of the errors. Non zero values select on
         quasi-differenced data.
+    :param aic_groups: groups whose parameters cost 2 each (AIC) rather
+        than log(n) (BIC), e.g. the drift of a differenced series.
     :return: SelectionResult
     """
     y = np.asarray(y, dtype=float)
@@ -121,6 +130,9 @@ def forward_select(
         idx = [0] + [1 + col_pos[c] for g in forced + groups for c in columns_of[g]]
         X = X_obs[:, idx]
         penalty = sum(2 * gamma * np.log(max(pool_sizes[g], 1)) for g in groups)
+        penalty += sum(
+            len(columns_of[g]) * (2 - np.log(n)) for g in groups if g in aic_groups
+        )
         return score(ols_rss(X, y_obs), n, X.shape[1], penalty)
 
     selected = []

@@ -9,11 +9,12 @@ import pandas as pd
 HISTORY = "#52514e"
 FORECAST = "#2a78d6"
 ACTUAL = "#eb6834"
+HIGHLIGHT = "#e34948"
 GRID = "#e4e3df"
 SURFACE = "#fcfcfb"
 
 
-def plot_forecast(history, forecast, actual=None, ax=None, title=None):
+def plot_forecast(history, forecast, actual=None, ax=None, title=None, highlight=None):
     """
     Plot history, forecast with its prediction interval, and optionally the
     true future values.
@@ -23,6 +24,8 @@ def plot_forecast(history, forecast, actual=None, ax=None, title=None):
     :param actual: optional Series or array of true future values.
     :param ax: matplotlib Axes, a new figure is made if None.
     :param title: optional title.
+    :param highlight: optional Series of points to mark, e.g. readings that
+        fell outside the prediction interval.
     :return: the matplotlib Axes.
     """
     import matplotlib.pyplot as plt
@@ -51,6 +54,19 @@ def plot_forecast(history, forecast, actual=None, ax=None, title=None):
             actual = pd.Series(np.asarray(actual), index=forecast.index[: len(actual)])
         ax.plot(actual.index, actual.values, color=ACTUAL, lw=1.5, label="actual")
 
+    if highlight is not None and len(highlight):
+        ax.plot(
+            highlight.index,
+            highlight.values,
+            "o",
+            ms=8,
+            color=HIGHLIGHT,
+            mec=SURFACE,
+            mew=2,
+            label="outside interval",
+            zorder=3,
+        )
+
     ax.grid(True, color=GRID, lw=0.8)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
@@ -70,7 +86,7 @@ def plot_forecast(history, forecast, actual=None, ax=None, title=None):
         fontsize=9,
         loc="upper left",
         bbox_to_anchor=(0, -0.12),
-        ncol=4,
+        ncol=5,
     )
     if title:
         ax.set_title(title, loc="left", fontsize=11, color="#0b0b0b")
