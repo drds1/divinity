@@ -4,9 +4,9 @@ name: Publish to PyPI
 # release is published (Releases -> "Draft a new release", tag e.g. v0.2.0),
 # or by hand from the Actions tab.
 # Uses PyPI trusted publishing (OIDC), so no API token is stored anywhere.
-# One-time set-up on PyPI: project "divinity" -> Manage -> Publishing ->
-# add a GitHub publisher with owner "drds1", repository "divinity",
-# workflow "publish.yml", environment "pypi".
+# One-time set-up on PyPI (pypi.org -> your account -> Publishing -> add a
+# pending publisher): project "divinity-forecast", owner "drds1",
+# repository "divinity", workflow "publish.yml", environment "pypi".
 on:
   release:
     types: [published]
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/divinity
+      url: https://pypi.org/p/divinity-forecast
     permissions:
       id-token: write
     steps:

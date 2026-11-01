@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this is
 
-Divinity is a Python library for automatic univariate timeseries forecasting, published on PyPI as `divinity`. The model is regression with ARIMA errors. The deterministic part is a constant, an optional linear trend and Fourier terms for each seasonal period. The library chooses those terms and the ARIMA order itself, then gives forecasts with prediction intervals.
+Divinity is a Python library for automatic univariate timeseries forecasting, published on PyPI as `divinity-forecast` (imported as `divinity`). The old `divinity` PyPI name belongs to an account that is no longer accessible, so do not publish there. The model is regression with ARIMA errors. The deterministic part is a constant, an optional linear trend and Fourier terms for each seasonal period. The library chooses those terms and the ARIMA order itself, then gives forecasts with prediction intervals.
 
 The main entry point is `divinity.Forecaster`.
 

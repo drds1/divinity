@@ -11,8 +11,10 @@ Give it a series and a horizon. Divinity decides whether there is a trend, which
 ## Install
 
 ```bash
-pip install divinity
+pip install divinity-forecast
 ```
+
+The package installs as `divinity-forecast` but is imported as `divinity`. Version 0.1 was published as `divinity` and is no longer maintained there.
 
 Or from a clone, with the development tools
 
