@@ -19,7 +19,7 @@ from . import datasets, synthetic
 from .forecaster import Forecaster, forecast
 from .legacy import divinity, gen_fake, gen_season, gen_trend
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Forecaster",
