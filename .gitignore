@@ -128,8 +128,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#docs/
-#pydocmd.yml
-_build
 
 venv/
+
+# M4 data downloaded by benchmarks/compare_models.py
+benchmarks/data/
+
+# Editor settings
+.idea/

@@ -231,3 +231,41 @@ def test_plot_highlight(fitted):
     ax = fitted.plot(fc, highlight=points)
     labels = [t.get_text() for t in ax.get_legend().get_texts()]
     assert "outside interval" in labels
+
+
+@pytest.fixture(scope="module")
+def evolving():
+    s = synthetic.make("evolving_seasonal", seed=1)
+    return s, dv.Forecaster().fit(s.history)
+
+
+def test_evolving_season_uses_seasonal_arima(evolving):
+    s, model = evolving
+    c = model.components_
+    assert c["evolving_period"] == 12.0
+    assert c["seasonal_order"] == (0, 1, 1, 12)
+    # seasonal differencing removes 12 and every period 12 / k
+    assert not any(abs(12 / p - round(12 / p)) < 0.1 for p in c["seasonal_periods"])
+    assert "12 (evolving)" in model.summary()
+    assert "(0, 1, 1)[12]" in model.summary()
+
+
+def test_evolving_season_forecast_does_not_depend_on_horizon(evolving):
+    _, model = evolving
+    pd.testing.assert_frame_equal(
+        model.predict(6), model.predict(30).iloc[:6], check_freq=False
+    )
+
+
+def test_evolving_season_can_be_switched_off(evolving):
+    s, _ = evolving
+    c = dv.Forecaster(evolving_seasonality=False).fit(s.history).components_
+    assert c["evolving_period"] is None
+    assert 12.0 in c["seasonal_periods"]
+
+
+def test_fixed_season_stays_fourier():
+    s = synthetic.make("daily_multi_seasonal", seed=0)
+    model = dv.Forecaster().fit(s.history)
+    assert model.components_["evolving_period"] is None
+    assert model.seasonal_theta_ <= -0.8

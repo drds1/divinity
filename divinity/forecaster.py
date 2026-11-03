@@ -26,6 +26,12 @@ from .selection import forward_select, lag1_autocorrelation
 MIN_OBSERVATIONS = 10
 MAX_GLS_ITERATIONS = 4
 MAX_STATIONARY_RHO = 0.95
+# longest period given seasonal ARIMA errors, longer ones are too slow to fit
+MAX_SARIMA_PERIOD = 48
+# a seasonal MA coefficient at or below this means the pattern is fixed
+FIXED_SEASON_THETA = -0.8
+# full cycles needed before an evolving pattern can be told from noise
+MIN_SEASON_CYCLES = 6
 
 
 class Forecaster:
@@ -56,6 +62,10 @@ class Forecaster:
     :param search_penalty: strength of the penalty for searching over many
         candidate features. Higher values make the model more reluctant to
         add seasonality, 0 gives plain BIC.
+    :param evolving_seasonality: test whether the main seasonal pattern
+        changes over time and, if it does, model it with seasonal ARIMA
+        errors instead of fixed Fourier terms. Only used with
+        ``arima="auto"`` and an integer period of at most 48 steps.
     """
 
     def __init__(
@@ -69,6 +79,7 @@ class Forecaster:
         log=False,
         interval=0.95,
         search_penalty=1.0,
+        evolving_seasonality=True,
     ):
         if trend not in ("auto", "linear", None):
             raise ValueError("trend must be 'auto', 'linear' or None")
@@ -83,6 +94,7 @@ class Forecaster:
         self.log = log
         self.interval = interval
         self.search_penalty = search_penalty
+        self.evolving_seasonality = evolving_seasonality
         self._result = None
 
     # ------------------------------------------------------------------ fit
@@ -160,6 +172,7 @@ class Forecaster:
         self.selection_history_ = selection.history
         self.rho_ = rho
 
+        self.seasonal_order_ = None
         if np.nanstd(resid) < 1e-10 * max(1.0, np.nanstd(values)):
             # deterministic series, nothing left for ARIMA to model
             self.order_ = None
@@ -170,9 +183,78 @@ class Forecaster:
 
         self.order_ = self._choose_order(resid)
         self._result = self._fit_joint(values, X, self.order_)
+        self._try_evolving_season(values)
         self._n_obs = int(observed.sum())
         self._n_params = len(self._result.params)
         return self
+
+    def _evolving_period(self):
+        """
+        The seasonal period to test for an evolving pattern, or None. Only
+        integer periods from the frequency defaults or the user qualify, as
+        seasonal ARIMA needs a whole number of steps per cycle. A period
+        whose Fourier terms were not selected still qualifies, because a
+        pattern that drifts can average out to nothing over the history.
+        """
+        if not self.evolving_seasonality or self.arima != "auto":
+            return None
+        n_obs = int(np.sum(~self.history_.isna()))
+        for p in self.candidate_periods_["known"]:
+            if (
+                p == round(p)
+                and 2 <= p <= MAX_SARIMA_PERIOD
+                and n_obs >= MIN_SEASON_CYCLES * p
+            ):
+                return int(p)
+        return None
+
+    def _try_evolving_season(self, values):
+        """
+        Refit with seasonal ARIMA(0, 1, 1) errors in place of the Fourier
+        terms for one period, and keep that model if the seasonal pattern
+        is evolving.
+
+        With seasonal differencing a fixed seasonal pattern shows up as a
+        seasonal MA coefficient of -1, so the Fourier model is kept unless
+        the coefficient is clearly above that.
+        """
+        m = self._evolving_period()
+        if m is None:
+            return
+        p, d, q = self.order_
+        groups = [
+            g
+            for g in self.groups_
+            # seasonal differencing removes every period m / k as well
+            if not (g.kind == "season" and _divides(g.period, m))
+            # a linear trend is not identified once differenced twice
+            and not (g.kind == "trend" and d > 0)
+        ]
+        X = design_matrix(np.arange(self.n_), groups, self.n_, self._drop)
+        exog = X.to_numpy() if X.shape[1] else None
+        for order in dict.fromkeys([(p, d, q), (0, d, 0)]):
+            try:
+                res = fit_quietly(
+                    ARIMA(
+                        values,
+                        exog=exog,
+                        order=order,
+                        seasonal_order=(0, 1, 1, m),
+                        trend="n",
+                    )
+                )
+            except (np.linalg.LinAlgError, ValueError):
+                continue
+            theta = res.params[list(res.model.param_names).index("ma.S.L{}".format(m))]
+            self.seasonal_theta_ = float(theta)
+            if theta <= FIXED_SEASON_THETA:
+                return
+            if not is_degenerate(res):
+                self.groups_ = groups
+                self.order_ = order
+                self.seasonal_order_ = (0, 1, 1, m)
+                self._result = res
+                return
 
     def _candidates(self, values):
         """
@@ -330,6 +412,9 @@ class Forecaster:
         cov = np.asarray(res.cov_params())[np.ix_(pos, pos)]
         if not np.all(np.isfinite(cov)):
             return 0.0
+        if self.seasonal_order_ is not None:
+            x = self._forecast_gradient(X_future, pos)
+            return np.einsum("ij,jk,ik->i", x, cov, x)
         has_const = "const" in names
         x = X_future.to_numpy()
         if self.order_[1] > 0:
@@ -339,6 +424,29 @@ class Forecaster:
         if has_const:
             x = np.hstack([np.ones((len(x), 1)), x])
         return np.einsum("ij,jk,ik->i", x, cov, x)
+
+    def _forecast_gradient(self, X_future, pos):
+        """
+        Change in the forecast per unit change in each regression
+        coefficient, holding the ARIMA parameters fixed. The forecast is
+        linear in these coefficients, so a unit step is exact.
+
+        :param X_future: features over the forecast horizon.
+        :param pos: positions of the regression coefficients in the
+            parameter vector.
+        :return: array of shape (steps, len(pos)).
+        """
+        res = self._result
+        exog = X_future.to_numpy()
+        base = np.asarray(res.get_forecast(len(exog), exog=exog).predicted_mean)
+        params = np.asarray(res.params)
+        columns = []
+        for i in pos:
+            shifted = params.copy()
+            shifted[i] += 1.0
+            moved = res.model.filter(shifted).get_forecast(len(exog), exog=exog)
+            columns.append(np.asarray(moved.predicted_mean) - base)
+        return np.column_stack(columns)
 
     def _future_index(self, steps):
         idx = self.history_.index
@@ -362,7 +470,11 @@ class Forecaster:
             "trend": any(g.kind == "trend" for g in self.groups_),
             "seasonal_periods": seasonal,
             "detected_periods": sorted({g.period for g in self.groups_ if g.detected}),
+            "evolving_period": (
+                float(self.seasonal_order_[3]) if self.seasonal_order_ else None
+            ),
             "arima_order": self.order_,
+            "seasonal_order": self.seasonal_order_,
         }
 
     @property
@@ -391,16 +503,22 @@ class Forecaster:
             lines.append("  frequency      {}".format(self.freq_))
         lines.append("  log scale      {}".format("yes" if self.log else "no"))
         lines.append("  trend          {}".format("linear" if c["trend"] else "none"))
-        if c["seasonal_periods"]:
-            parts = []
-            for p, k in c["seasonal_periods"].items():
-                tag = ", detected" if p in c["detected_periods"] else ""
-                parts.append("{:g} ({} harmonic{}{})".format(p, k, "s" * (k > 1), tag))
-            lines.append("  seasonality    " + ", ".join(parts))
-        else:
-            lines.append("  seasonality    none")
+        parts = []
+        if c["evolving_period"]:
+            parts.append("{:g} (evolving)".format(c["evolving_period"]))
+        for p, k in c["seasonal_periods"].items():
+            tag = ", detected" if p in c["detected_periods"] else ""
+            parts.append("{:g} ({} harmonic{}{})".format(p, k, "s" * (k > 1), tag))
+        lines.append("  seasonality    " + (", ".join(parts) or "none"))
         if c["arima_order"] is None:
             lines.append("  residuals      none (series is deterministic)")
+        elif c["seasonal_order"]:
+            P, D, Q, m = c["seasonal_order"]
+            lines.append(
+                "  residuals      ARIMA{}({}, {}, {})[{}]".format(
+                    c["arima_order"], P, D, Q, m
+                )
+            )
         else:
             lines.append("  residuals      ARIMA{}".format(c["arima_order"]))
         return "\n".join(lines)
@@ -484,6 +602,14 @@ def _as_series(y, freq):
     if not pd.api.types.is_integer_dtype(idx) or not (np.diff(idx) == 1).all():
         series = series.reset_index(drop=True)
     return series, freq
+
+
+def _divides(period, m, tol=0.05):
+    """
+    True if ``period`` is within ``tol`` (relative) of m / k for a whole k.
+    """
+    k = max(round(m / period), 1)
+    return abs(period - m / k) <= tol * m / k
 
 
 def _with_constant(X):

@@ -24,6 +24,8 @@ def structure_ok(name, components):
     Did the model pick up the structure each scenario was built with?
     """
     c = components
+    if name == "evolving_seasonal":
+        return c["evolving_period"] == 12.0
     periods = list(c["seasonal_periods"])
     d = c["arima_order"][1] if c["arima_order"] else 0
     if name == "white_noise":

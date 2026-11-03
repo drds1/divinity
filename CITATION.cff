@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use Divinity in your work, please cite it as below."
+title: "Divinity: automatic timeseries forecasting with honest prediction intervals"
+type: software
+authors:
+  - alias: drds1
+    email: drds.gh1@gmail.com
+repository-code: "https://github.com/drds1/divinity"
+url: "https://pypi.org/project/divinity-forecast/"
+license: Apache-2.0
+version: 0.4.0
+date-released: "2026-11-03"
+keywords:
+  - forecasting
+  - time series
+  - ARIMA
+  - seasonality
+  - prediction intervals
+abstract: >-
+  Divinity is a Python library for automatic univariate timeseries
+  forecasting. It fits regression with ARIMA errors, chooses the trend,
+  Fourier seasonal terms, evolving seasonality and ARIMA order itself, and
+  returns forecasts with calibrated prediction intervals.
