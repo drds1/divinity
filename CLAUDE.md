@@ -51,7 +51,7 @@ pre-commit run --all-files                     # black and whitespace checks
 
 ## CI and releases
 
-- [.github/workflows/tests.yml](.github/workflows/tests.yml) runs the fast tests on pushes to master and on pull requests. The slow tests run only when triggered by hand with tier "full".
+- [.github/workflows/tests.yml](.github/workflows/tests.yml) runs the fast tests on pushes to master and on pull requests, on every supported Python (3.11 to 3.15). The minimum is `requires-python` in `pyproject.toml`. Support the newest Python release but do not require it, and raise the minimum only when a version reaches end of life. Keep the matrix, the version classifiers in `pyproject.toml` and the "Python 3.11 or later" line in the README in step. The slow tests run only when triggered by hand with tier "full".
 - [.github/workflows/publish.yml](.github/workflows/publish.yml) publishes to PyPI via trusted publishing when a GitHub release is created. To release, bump `version` in `pyproject.toml`, `__version__` in `divinity/__init__.py`, and the version in `CITATION.cff` and the README BibTeX block, then create the release (e.g. `gh release create v0.2.1`).
 
 ## Things to keep true

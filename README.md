@@ -24,7 +24,7 @@ Or from a clone, with the development tools
 pip install -e ".[dev]"
 ```
 
-Python 3.10 or later.
+Python 3.11 or later.
 
 ## Quick start
 
