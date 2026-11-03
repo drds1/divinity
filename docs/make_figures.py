@@ -32,6 +32,7 @@ HISTORY = {"daily_multi_seasonal": 400, "random_walk": 150}
 TITLES = {
     "trend_seasonal": "Trend plus seasonality",
     "daily_multi_seasonal": "Daily data, weekly and yearly cycles",
+    "evolving_seasonal": "Seasonal shape drifting year to year",
     "monthly_multiplicative": "Monthly growth, multiplicative seasonality (log=True)",
     "white_noise": "Pure noise. Nothing to find",
     "random_walk": "Random walk. Looks trendy, is not",
@@ -53,9 +54,14 @@ def describe(components):
         parts.append(
             "periods " + ", ".join("{:g}".format(p) for p in c["seasonal_periods"])
         )
-    else:
+    if c.get("evolving_period"):
+        parts.append("evolving period {:g}".format(c["evolving_period"]))
+    if not c["seasonal_periods"] and not c.get("evolving_period"):
         parts.append("no seasonality")
-    parts.append("ARIMA{}".format(c["arima_order"]))
+    order = "ARIMA{}".format(c["arima_order"])
+    if c.get("seasonal_order"):
+        order += "({}, {}, {})[{}]".format(*c["seasonal_order"])
+    parts.append(order)
     return "Found: " + ", ".join(parts)
 
 

@@ -255,6 +255,12 @@ def main():
     parser.add_argument("--data", default="benchmarks/data")
     parser.add_argument("--out", default="benchmarks/comparison.md")
     parser.add_argument("--csv", default="benchmarks/comparison.csv")
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="keep rows for other models from the existing --csv, so only "
+        "the models given are refitted (same --series and --seed assumed)",
+    )
     args = parser.parse_args()
 
     tasks = load_tasks(args.groups, args.series, args.seed, args.data, args.models)
@@ -267,8 +273,15 @@ def main():
             if i % 100 == 0 or i == len(tasks):
                 print("{}/{} fits done".format(i, len(tasks)), flush=True)
 
+    order = args.models
+    if args.update and os.path.exists(args.csv):
+        old = pd.read_csv(args.csv)
+        old["failed"] = old["failed"].fillna("")
+        keep = old[~old["model"].isin(args.models) & old["group"].isin(args.groups)]
+        rows = keep.to_dict("records") + rows
+        order = [m for m in MODELS if m in set(old["model"]) | set(args.models)]
     pd.DataFrame(rows).to_csv(args.csv, index=False)
-    table = to_markdown(summarise(rows), args.models)
+    table = to_markdown(summarise(rows), order)
     header = (
         "# Comparison on M4\n\n"
         "{} series per frequency sampled with seed {}. Lower is better for MASE, "

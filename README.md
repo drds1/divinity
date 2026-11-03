@@ -72,7 +72,8 @@ The series is modelled as a constant, plus an optional linear trend, plus Fourie
 2. **Feature selection.** Trend and seasonal terms are added one at a time while they improve BIC. Extra harmonics of a period (for sharper, non-sinusoidal shapes) are only tried once the lower harmonic is in. There is an additional penalty for searching over many candidates. Without it, testing dozens of periods on noise will find one by chance.
 3. **Random walk or not?** Before choosing any features, an augmented Dickey-Fuller test is run on what is left after removing the trend and the known periods. Detected periods are left out because they might be spurious. Testing first matters. On a random walk, spurious features soak up the wander and make the leftovers look stationary, so a test afterwards confirms its own mistake.
 4. **Allowing for autocorrelation.** Least squares assumes independent errors, and on a random walk it declares almost any trend "significant". If the series has a unit root, features are selected on differenced data. Otherwise the autocorrelation of the residuals is estimated and features are reselected on quasi-differenced data (feasible GLS), repeating until the choice settles. The ARIMA order for what remains is chosen by BIC over a small grid. An order whose fit collapses onto the edge of the parameter space (an AR root on the unit circle cancelled by an MA root) is skipped in favour of the next best. For a differenced series a drift is kept at the AIC price rather than BIC, as R's `auto.arima` does, because a missed drift costs more the further ahead you forecast.
-5. **Joint fit and intervals.** Features and ARIMA errors are fitted together by maximum likelihood. Forecast intervals combine the ARIMA forecast variance with the uncertainty in the trend and seasonal coefficients, which matters most when extrapolating a trend a long way. Student t quantiles allow for the noise level being estimated, which matters for short series.
+5. **Fixed or evolving seasonality?** A Fourier term assumes the seasonal shape is the same every cycle. Real patterns often drift (the daily profile of electricity use changes with the seasons, a product's best month shifts). For an integer period of up to 48 steps with at least six full cycles of data, the model is refitted with seasonal ARIMA errors (a seasonal difference and a seasonal MA term) in place of the Fourier terms for that period. A fixed pattern shows up as a seasonal MA coefficient close to −1. If the estimate is clearly above that (above −0.8), the pattern is treated as evolving and the seasonal ARIMA model is kept, so recent cycles count for more than old ones.
+6. **Joint fit and intervals.** Features and ARIMA errors are fitted together by maximum likelihood. Forecast intervals combine the ARIMA forecast variance with the uncertainty in the trend and seasonal coefficients, which matters most when extrapolating a trend a long way. Student t quantiles allow for the noise level being estimated, which matters for short series.
 
 The fitted model does not depend on the forecast horizon, so `predict(10)` is exactly the first ten rows of `predict(100)`.
 
@@ -91,6 +92,12 @@ A linear trend, a 20 step cycle and noise. Neither component is specified.
 The seasonal swing grows with the level. Fitting with `log=True` handles this.
 
 ![Monthly multiplicative](https://raw.githubusercontent.com/drds1/divinity/master/docs/images/monthly_multiplicative.png)
+
+### A seasonal pattern that drifts
+
+Each month's effect wanders from year to year, so the seasonal shape at the end is clearly different from the start. A fixed seasonal pattern would average over fifteen years of drift. Divinity detects that the pattern is evolving and switches to seasonal ARIMA errors, which follow the recent shape.
+
+![Evolving seasonality](https://raw.githubusercontent.com/drds1/divinity/master/docs/images/evolving_seasonal.png)
 
 ### Pure noise
 
@@ -142,26 +149,68 @@ One chart per case could still be luck, so [`benchmarks/run_benchmark.py`](https
 |---|---:|---:|---:|---:|
 | `trend_seasonal` | 100 | 94.3% | 100% | 0.24 |
 | `daily_multi_seasonal` | 100 | 95.1% | 100% | 0.32 |
-| `monthly_multiplicative` | 100 | 94.0% | 100% | 0.19 |
+| `monthly_multiplicative` | 100 | 94.1% | 98% | 0.19 |
+| `evolving_seasonal` | 100 | 96.7% | 100% | 0.27 |
 | `white_noise` | 100 | 94.8% | 98% | 0.75 |
 | `random_walk` | 100 | 93.8% | 94% | 1.06 |
 | `ar1` | 100 | 91.9% | 88% | 0.83 |
 | `missing_data` | 100 | 93.9% | 100% | 0.23 |
 | `unknown_period` | 100 | 95.2% | 100% | 0.27 |
 | `outliers` | 100 | 100.0% | 100% | 0.43 |
-| `short_daily` | 100 | 92.4% | 100% | 0.38 |
+| `short_daily` | 100 | 92.3% | 100% | 0.38 |
 
 How to read the weaker rows
 
 - **`ar1` (91.9%).** Autoregressive coefficients estimated from 200 points are biased slightly towards zero, so the intervals come out a little narrow. In 12% of runs the model reads the series as a random walk or adds a small trend. Both are hard to tell apart from a strongly autocorrelated series of this length.
 - **`random_walk` (RMSE 1.06).** For a random walk the naive forecast is the best possible point forecast, so about 1.0 is the floor. The small excess is the price of keeping a drift when one is supported, which is what makes trending series like CO₂ forecast well. What matters here is the interval, and 94% coverage means the fan is honest.
-- **`short_daily` (92.4%).** 35 points carrying seven seasonal coefficients leaves little to estimate the noise from, even with t quantiles.
+- **`short_daily` (92.3%).** 35 points carrying seven seasonal coefficients leaves little to estimate the noise from, even with t quantiles.
+- **`monthly_multiplicative` (98% structure).** In 2 runs of 100 the fixed seasonal pattern was read as evolving. The forecast is still seasonal, just with wider intervals than needed.
+- **`evolving_seasonal` (96.7%).** Seasonal differencing gives slightly wider intervals than strictly needed when the drift is slow.
 - **`outliers` (100%).** The spikes inflate the estimated noise, so the intervals are wider than they need to be. This errs in the safe direction.
 
 Regenerate it with
 
 ```bash
 python benchmarks/run_benchmark.py --seeds 100
+```
+
+## Against Prophet and other forecasters
+
+The cases above were built to test specific traps. To see how Divinity does on real data it is compared with [Prophet](https://facebook.github.io/prophet/), AutoARIMA and AutoETS from [statsforecast](https://github.com/Nixtla/statsforecast), and two baselines. The data are 600 series from the [M4 competition](https://www.sciencedirect.com/science/article/pii/S0169207019301128) (100 sampled at random from each frequency) with the official M4 test periods held out. Every model gets the same dated series and runs with its default settings, as a new user would run it.
+
+| model | MASE | sMAPE | 95% coverage | MSIS | median seconds |
+|---|---:|---:|---:|---:|---:|
+| Divinity | **2.104** | 11.44 | 89.2% | **20.44** | 1.39 |
+| AutoARIMA | 2.116 | **10.63** | 87.9% | 22.11 | 1.18 |
+| AutoETS | 2.125 | 10.71 | 90.1% | 23.80 | 0.20 |
+| Seasonal naive | 2.438 | 11.86 | 88.4% | 24.76 | 0.00 |
+| Naive | 3.918 | 16.26 | 87.4% | 33.95 | 0.00 |
+| Prophet | 4.887 | 17.32 | 64.0% | 71.20 | 0.38 |
+
+*MASE* is the forecast error relative to a seasonal naive forecast in the training data, and *sMAPE* is the symmetric percentage error. *MSIS* is the M4 interval score, which rewards a narrow interval and penalises any truth that falls outside it. Lower is better for all three. No model failed on any series.
+
+MASE by frequency
+
+| | yearly | quarterly | monthly | weekly | daily | hourly |
+|---|---:|---:|---:|---:|---:|---:|
+| Divinity | 3.39 | 1.26 | 1.03 | 2.38 | **3.64** | **0.92** |
+| AutoARIMA | 3.59 | 1.20 | **0.94** | **2.28** | 3.74 | 0.95 |
+| AutoETS | **2.95** | **1.13** | 0.96 | 2.32 | 3.75 | 1.64 |
+| Prophet | 4.09 | 2.00 | 1.19 | 6.25 | 14.12 | 1.67 |
+
+What this shows
+
+- **Prophet** is worse than simply repeating last season at every frequency, and its 95% intervals contain the truth only 64% of the time.
+- **Divinity, AutoARIMA and AutoETS** are close overall. Divinity has the lowest average MASE and the best interval score, but the margin over AutoARIMA on MASE is small enough that a different sample of series could reverse it. It does best on daily and hourly data. On hourly data it is as accurate as AutoARIMA in about a seventh of the time (a median of 14 seconds per series against 98).
+- **Yearly series are the weak spot.** AutoETS is clearly better there, and Divinity's intervals cover only 75%. Yearly M4 series are short and the trend often changes, which a straight-line trend cannot follow. Damping the trend was tried and did not help.
+- **Quarterly** is behind AutoETS. One series with sudden level jumps accounts for the gap to AutoARIMA. Seasonal differencing turned its last jump into a steep extrapolated rise, and without that series Divinity and AutoARIMA tie at 1.20 against 1.13 for AutoETS.
+- **Every method's intervals are too narrow on yearly data**, from 38% (Prophet) to 83% (AutoETS) against the 95% intended. Yearly series change structure more than any of these models assumes.
+
+The evolving seasonality step was developed on a different sample of M4 series (seed 1) and only checked on this one afterwards, so these numbers were not tuned to the series they are reported on. Per frequency results are in [benchmarks/comparison.md](https://github.com/drds1/divinity/blob/master/benchmarks/comparison.md). To rerun (about 40 minutes on four cores, most of it AutoARIMA on hourly data)
+
+```bash
+pip install -e ".[benchmark]"
+python benchmarks/compare_models.py --series 100
 ```
 
 ## Practical applications
@@ -384,6 +433,7 @@ dv.Forecaster(
     log=False,                # fit on the log scale, for growth with growing seasonality
     interval=0.95,            # default interval coverage
     search_penalty=1.0,       # higher is more reluctant to add seasonality, 0 is plain BIC
+    evolving_seasonality=True,  # allow the main seasonal pattern to drift (seasonal ARIMA)
 )
 ```
 
@@ -404,7 +454,7 @@ If dates are missing entirely from a `DatetimeIndex` the frequency cannot be inf
 - Trends are linear. A curve or saturation will be extrapolated as a straight line.
 - Level shifts and regime changes are not modelled.
 - Outliers are not removed. They widen the interval a little instead.
-- Seasonal shape is fixed (or proportional to the level with `log=True`).
+- Only one seasonal period (an integer one of up to 48 steps) can evolve. Others keep a fixed shape (or one proportional to the level with `log=True`).
 - One series at a time, with no external regressors.
 
 ## Development
@@ -416,6 +466,7 @@ pytest -m "not slow"      # fast unit and smoke tests
 pytest                    # also the coverage checks over many seeds (a few minutes)
 python benchmarks/run_benchmark.py --seeds 100   # the coverage table above
 python docs/make_figures.py                      # the charts above
+python benchmarks/compare_models.py --series 100 # the M4 comparison (needs .[benchmark])
 jupyter execute --inplace notebooks/*.ipynb     # rerun both notebooks
 ```
 

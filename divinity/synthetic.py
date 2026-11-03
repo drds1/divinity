@@ -188,12 +188,33 @@ def short_daily(seed=0, days=35, horizon=14):
     )
 
 
+def evolving_seasonal(seed=0, years=15, horizon=24):
+    rng = np.random.default_rng(seed)
+    dates = pd.date_range("2010-01-01", periods=12 * years + horizon, freq="MS")
+    # each month's effect follows its own random walk from year to year, so
+    # the seasonal shape at the end differs clearly from the start
+    start = 5 * np.sin(2 * np.pi * np.arange(12) / 12)
+    profile = start + np.cumsum(rng.normal(0, 0.8, (len(dates) // 12 + 1, 12)), axis=0)
+    seasonal = profile.ravel()[: len(dates)]
+    y = 100 + seasonal + rng.normal(0, 0.5, len(dates))
+    history, future = _split(pd.Series(y, index=dates), horizon)
+    return Scenario(
+        "evolving_seasonal",
+        "Monthly data whose seasonal shape drifts from year to year. A fixed "
+        "seasonal pattern averages over the drift, so the model should treat "
+        "the pattern as evolving and weight recent years more.",
+        history,
+        future,
+    )
+
+
 SCENARIOS = {
     f.__name__: f
     for f in (
         trend_seasonal,
         daily_multi_seasonal,
         monthly_multiplicative,
+        evolving_seasonal,
         white_noise,
         random_walk,
         ar1,
