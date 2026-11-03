@@ -133,3 +133,6 @@ dmypy.json
 _build
 
 venv/
+
+# M4 data downloaded by benchmarks/compare_models.py
+benchmarks/data/

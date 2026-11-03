@@ -27,6 +27,11 @@ dev = [
     "nbformat>=5.10",
     "ipykernel>=6",
 ]
+benchmark = [
+    "prophet>=1.1",
+    "statsforecast>=1.7",
+    "datasetsforecast>=0.0.8",
+]
 
 [project.urls]
 Homepage = "https://github.com/drds1/divinity"
