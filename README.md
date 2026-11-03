@@ -457,6 +457,26 @@ If dates are missing entirely from a `DatetimeIndex` the frequency cannot be inf
 - Only one seasonal period (an integer one of up to 48 steps) can evolve. Others keep a fixed shape (or one proportional to the level with `log=True`).
 - One series at a time, with no external regressors.
 
+## Citing Divinity
+
+If Divinity helps your work, please cite it. GitHub's "Cite this repository" button gives the reference in APA and BibTeX, from [CITATION.cff](https://github.com/drds1/divinity/blob/master/CITATION.cff).
+
+```bibtex
+@software{drds1_divinity,
+  author  = {drds1},
+  title   = {Divinity: automatic timeseries forecasting with honest prediction intervals},
+  url     = {https://github.com/drds1/divinity},
+  version = {0.4.0},
+  year    = {2026}
+}
+```
+
+Divinity is released under the [Apache License 2.0](https://github.com/drds1/divinity/blob/master/LICENSE). If you redistribute it or a modified version, keep the [NOTICE](https://github.com/drds1/divinity/blob/master/NOTICE) file with it.
+
+## Author
+
+Divinity is written and maintained by [@drds1](https://github.com/drds1). Bug reports and ideas are welcome as [GitHub issues](https://github.com/drds1/divinity/issues).
+
 ## Development
 
 ```bash

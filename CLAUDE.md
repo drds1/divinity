@@ -32,9 +32,9 @@ One module per stage, in the order `Forecaster.fit` uses them.
 - [benchmarks/run_benchmark.py](benchmarks/run_benchmark.py) refits every scenario over many seeds and reports interval coverage, structure recovery and RMSE against a naive forecast. Its numbers are in the README table.
 - [benchmarks/compare_models.py](benchmarks/compare_models.py) compares Divinity with Prophet, statsforecast AutoARIMA and AutoETS, seasonal naive and naive on 100 sampled M4 series per frequency (needs `pip install -e ".[benchmark]"`). Results are in `benchmarks/comparison.md` and `comparison.csv`, and the README comparison section quotes them. `--update --models Divinity` refits only Divinity and keeps the stored competitor rows. Develop and tune on `--seed 1` and report on seed 0, so the README numbers are not tuned to the series they describe.
 - [docs/make_figures.py](docs/make_figures.py) regenerates the README charts. Scenario charts (`docs/images/*.png`) use seed 0. Application charts (`docs/images/applications/*.png`) are made by running the README snippets tagged `<!-- example: name -->`, so the charts always match the code shown.
-- [notebooks/demo.ipynb](notebooks/demo.ipynb) is the walkthrough of the API and the tricky cases. [notebooks/applications.ipynb](notebooks/applications.ipynb) works through each practical application and checks the forecasts against what happened. `scratch/` is old exploratory work and not part of the package.
-- `docs/` pydocmd pages (`pydocmd.yml`, `docs/*.sh`, `docs/endpoints`, `docs/config`) are unmaintained placeholders from 0.1. The README is the real documentation.
-- The Docker image ([Docker/Dockerfile](Docker/Dockerfile)) just runs the tests. It has not been built since the 0.2.0 rewrite.
+- [notebooks/demo.ipynb](notebooks/demo.ipynb) is the walkthrough of the API and the tricky cases. [notebooks/applications.ipynb](notebooks/applications.ipynb) works through each practical application and checks the forecasts against what happened.
+- The README is the only documentation. The old pydocmd pages, `scratch/` and the Docker image were removed in 0.4.0.
+- [NOTICE](NOTICE) and [CITATION.cff](CITATION.cff) carry the author credit, under the GitHub handle drds1. Do not put the author's real name in public files. Bump `version` and `date-released` in `CITATION.cff` and the version in the README BibTeX block with each release.
 
 ## Commands
 
@@ -52,7 +52,7 @@ pre-commit run --all-files                     # black and whitespace checks
 ## CI and releases
 
 - [.github/workflows/tests.yml](.github/workflows/tests.yml) runs the fast tests on pushes to master and on pull requests. The slow tests run only when triggered by hand with tier "full".
-- [.github/workflows/publish.yml](.github/workflows/publish.yml) publishes to PyPI via trusted publishing when a GitHub release is created. To release, bump `version` in `pyproject.toml` and `__version__` in `divinity/__init__.py`, then create the release (e.g. `gh release create v0.2.1`).
+- [.github/workflows/publish.yml](.github/workflows/publish.yml) publishes to PyPI via trusted publishing when a GitHub release is created. To release, bump `version` in `pyproject.toml`, `__version__` in `divinity/__init__.py`, and the version in `CITATION.cff` and the README BibTeX block, then create the release (e.g. `gh release create v0.2.1`).
 
 ## Things to keep true
 
@@ -68,5 +68,5 @@ pre-commit run --all-files                     # black and whitespace checks
 
 ## Security notes
 
-- Never pass SSH keys or other secrets into Docker builds as `--build-arg`. Use BuildKit `--secret` or `--ssh` if a build ever needs credentials.
+- If a Docker build is ever added back, never pass SSH keys or other secrets as `--build-arg`. Use BuildKit `--secret` or `--ssh` instead.
 - Do not commit credentials, `.env` files or PyPI tokens.

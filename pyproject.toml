@@ -4,12 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "divinity-forecast"
-version = "0.3.0"
+version = "0.4.0"
 description = "Automatic timeseries forecasting with honest prediction intervals"
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
-authors = [{ name = "dstarkey23", email = "drds.gh1@gmail.com" }]
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "drds1", email = "drds.gh1@gmail.com" }]
+keywords = ["forecasting", "time series", "timeseries", "arima", "seasonality", "prediction intervals"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
@@ -35,6 +44,9 @@ benchmark = [
 
 [project.urls]
 Homepage = "https://github.com/drds1/divinity"
+Documentation = "https://github.com/drds1/divinity#readme"
+Issues = "https://github.com/drds1/divinity/issues"
+Changelog = "https://github.com/drds1/divinity/releases"
 
 [tool.setuptools]
 packages = ["divinity"]

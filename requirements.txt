@@ -1,2 +1,0 @@
-# Development install. The package itself is defined in pyproject.toml.
--e .[dev]
